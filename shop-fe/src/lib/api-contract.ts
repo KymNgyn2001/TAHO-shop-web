@@ -47,6 +47,8 @@ export interface Variant {
   inStock: boolean;
 }
 
+export type Audience = 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
+
 /** Dung cho luoi san pham — KHONG kem variants cho nhe payload. */
 export interface ProductCard {
   id: number;
@@ -55,6 +57,7 @@ export interface ProductCard {
   basePrice: number;
   primaryImageUrl: string | null;
   categoryName: string | null;
+  audience: Audience;
   /** Chi co khi tra ve tu /search/semantic hoac /recommend. 0..1 */
   score?: number;
 }
@@ -168,7 +171,8 @@ export interface ChatRequest {
 // =====================================================================
 //
 // GET  /api/categories                       -> Category[]
-// GET  /api/products?page=&size=&categoryId= -> Page<ProductCard>
+// GET  /api/products?page=&size=&categoryId=&audience= -> Page<ProductCard>
+//      audience: MEN | WOMEN | KIDS | UNISEX
 // GET  /api/products/{slug}                  -> ProductDetail | 404
 //
 // POST /api/search/semantic  {query, limit}   -> ProductCard[]  (co score)

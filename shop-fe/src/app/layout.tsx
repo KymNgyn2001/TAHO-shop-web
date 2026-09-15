@@ -17,7 +17,7 @@ const sans = Be_Vietnam_Pro({
 });
 
 export const metadata: Metadata = {
-  title: 'Nếp — quần áo cơ bản',
+  title: 'TAHO — quần áo cơ bản',
   description: 'Tìm quần áo bằng câu mô tả hoặc bằng ảnh.',
 };
 

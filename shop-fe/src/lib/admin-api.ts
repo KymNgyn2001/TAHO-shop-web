@@ -210,11 +210,17 @@ export const adminApi = {
       basePrice: body.basePrice,
       primaryImageUrl: body.imageUrls[0] ?? null,
       categoryName: category?.name ?? null,
+      audience: body.audience ?? 'UNISEX',
       description: body.description ?? null,
       brand: body.brand ?? null,
       material: body.material ?? null,
       sizeChartUrl: body.sizeChartImageUrl ?? null,
     };
+  },
+
+  async deleteProduct(id: number): Promise<void> {
+    if (!USE_MOCK) return request(`/api/admin/products/${id}`, { method: 'DELETE' });
+    await delay(300);
   },
 
   async monthlyStats(month: string): Promise<MonthlyStats> {

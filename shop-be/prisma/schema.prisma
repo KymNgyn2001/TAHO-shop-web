@@ -38,6 +38,13 @@ enum DiscountType {
   FIXED
 }
 
+enum Audience {
+  MEN
+  WOMEN
+  KIDS
+  UNISEX
+}
+
 model User {
   id            Int      @id @default(autoincrement())
   name          String
@@ -73,6 +80,7 @@ model Product {
   brand        String?
   material     String?
   sizeChartUrl String?
+  audience     Audience @default(UNISEX)
   viewCount    Int      @default(0)
   createdAt    DateTime @default(now())
 

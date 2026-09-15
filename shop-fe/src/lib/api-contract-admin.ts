@@ -52,6 +52,8 @@ export interface CreateProductRequest {
   material?: string;
   imageUrls: string[];       // lay tu ket qua uploadImage, phan tu [0] la anh chinh
   sizeChartImageUrl?: string; // anh bang size, cung lay tu uploadImage
+  /** Bo trong -> BE mac dinh UNISEX. */
+  audience?: 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
   variants: CreateVariantInput[];
 }
 
@@ -165,6 +167,8 @@ export interface ReplyReviewRequest {
 // POST   /api/admin/products  CreateProductRequest -> ProductDetail (201) [EMPLOYEE, MANAGER]
 //        BE phai sinh embedding/chi muc tim kiem cho san pham moi NGAY trong luong nay,
 //        neu khong san pham se khong bao gio xuat hien trong tim kiem.
+// DELETE /api/admin/products/{id}                 -> 204                  [EMPLOYEE, MANAGER]
+//        Loi: 409 PRODUCT_HAS_ORDERS (san pham da nam trong don hang, khong xoa duoc)
 //
 // GET    /api/admin/reviews?page=&size=&replied= -> Page<ReviewForAdmin>  [EMPLOYEE, MANAGER]
 // POST   /api/admin/reviews/{id}/reply  ReplyReviewRequest -> ReviewForAdmin (201) [EMPLOYEE, MANAGER]

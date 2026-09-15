@@ -43,6 +43,7 @@ async function main() {
   const catalog = [
     {
       category: 'Áo sơ mi',
+      audience: 'UNISEX' as const,
       name: 'Áo sơ mi linen tay dài',
       basePrice: 459000,
       description: 'Linen pha cotton, form suông, ít nhăn hơn linen nguyên chất.',
@@ -57,6 +58,7 @@ async function main() {
     },
     {
       category: 'Quần',
+      audience: 'MEN' as const,
       name: 'Quần âu ống suông',
       basePrice: 620000,
       description: 'Ống suông, cạp cao, có ly. Vải tuyết mưa ít nhăn.',
@@ -70,6 +72,7 @@ async function main() {
     },
     {
       category: 'Áo thun',
+      audience: 'UNISEX' as const,
       name: 'Áo thun cotton bo gân',
       basePrice: 249000,
       description: 'Cotton 100% dệt bo gân, dày dặn, không xuyên thấu.',
@@ -83,6 +86,7 @@ async function main() {
     },
     {
       category: 'Chân váy',
+      audience: 'WOMEN' as const,
       name: 'Chân váy xếp ly midi',
       basePrice: 535000,
       description: 'Dài qua gối, ly giữ nếp sau nhiều lần giặt.',
@@ -93,6 +97,7 @@ async function main() {
     },
     {
       category: 'Áo khoác',
+      audience: 'WOMEN' as const,
       name: 'Áo khoác blazer một lớp',
       basePrice: 890000,
       description: 'Không lót, mặc được mùa nóng. Vai nhẹ, không độn dày.',
@@ -103,6 +108,7 @@ async function main() {
     },
     {
       category: 'Đầm',
+      audience: 'WOMEN' as const,
       name: 'Đầm lụa cổ vuông',
       basePrice: 720000,
       description: 'Lụa nhân tạo mềm rủ, cổ vuông, tay ngắn.',
@@ -113,7 +119,7 @@ async function main() {
     },
   ];
 
-  const categoryNames = [...new Set(catalog.map((c) => c.category))];
+  const categoryNames = [...new Set(catalog.map((c) => c.category)), 'Phụ kiện'];
   const categoryByName = new Map<string, number>();
   for (const name of categoryNames) {
     const category = await prisma.category.upsert({
@@ -134,6 +140,7 @@ async function main() {
         name: item.name,
         slug,
         categoryId: categoryByName.get(item.category)!,
+        audience: item.audience,
         basePrice: item.basePrice,
         description: item.description,
         brand: item.brand,

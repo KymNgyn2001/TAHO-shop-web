@@ -22,6 +22,8 @@ type ProductVariant = {
   inStock: boolean;
 };
 
+export type Audience = 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
+
 type ProductDetail = {
   id: number;
   name: string;
@@ -29,6 +31,7 @@ type ProductDetail = {
   basePrice: number;
   primaryImageUrl: string;
   categoryName: string;
+  audience: Audience;
   description: string;
   brand: string;
   material: string;
@@ -39,10 +42,12 @@ type ProductDetail = {
 
 type ProductCard = Pick<
   ProductDetail,
-  'id' | 'name' | 'slug' | 'basePrice' | 'primaryImageUrl' | 'categoryName'
+  'id' | 'name' | 'slug' | 'basePrice' | 'primaryImageUrl' | 'categoryName' | 'audience'
 > & {
   score?: number;
 };
+
+export type Category = { id: number; name: string; slug: string; productCount: number };
 
 type CartItem = {
   id: number;
@@ -265,7 +270,7 @@ const img = (seed: string) => `https://picsum.photos/seed/${seed}/600/800`;
 export const MOCK_PRODUCTS: ProductDetail[] = [
   {
     id: 1, name: 'Áo sơ mi linen tay dài', slug: 'ao-so-mi-linen-tay-dai',
-    basePrice: 459000, primaryImageUrl: img('linen1'), categoryName: 'Áo sơ mi',
+    basePrice: 459000, primaryImageUrl: img('linen1'), categoryName: 'Áo sơ mi', audience: 'UNISEX',
     description: 'Linen pha cotton, form suông, ít nhăn hơn linen nguyên chất.',
     brand: 'Local Studio', material: 'Linen 70% / Cotton 30%', sizeChartUrl: null,
     images: [
@@ -280,7 +285,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 2, name: 'Quần âu ống suông', slug: 'quan-au-ong-suong',
-    basePrice: 620000, primaryImageUrl: img('trouser1'), categoryName: 'Quần',
+    basePrice: 620000, primaryImageUrl: img('trouser1'), categoryName: 'Quần', audience: 'MEN',
     description: 'Ống suông, cạp cao, có ly. Vải tuyết mưa ít nhăn.',
     brand: 'Local Studio', material: 'Polyester 65% / Viscose 35%', sizeChartUrl: null,
     images: [{ url: img('trouser1'), altText: null, isPrimary: true }],
@@ -291,7 +296,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 3, name: 'Áo thun cotton bo gân', slug: 'ao-thun-cotton-bo-gan',
-    basePrice: 249000, primaryImageUrl: img('tee1'), categoryName: 'Áo thun',
+    basePrice: 249000, primaryImageUrl: img('tee1'), categoryName: 'Áo thun', audience: 'UNISEX',
     description: 'Cotton 100% dệt bo gân, dày dặn, không xuyên thấu.',
     brand: 'Basics', material: 'Cotton 100%', sizeChartUrl: null,
     images: [{ url: img('tee1'), altText: null, isPrimary: true }],
@@ -302,7 +307,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 4, name: 'Chân váy xếp ly midi', slug: 'chan-vay-xep-ly-midi',
-    basePrice: 535000, primaryImageUrl: img('skirt1'), categoryName: 'Chân váy',
+    basePrice: 535000, primaryImageUrl: img('skirt1'), categoryName: 'Chân váy', audience: 'WOMEN',
     description: 'Dài qua gối, ly giữ nếp sau nhiều lần giặt.',
     brand: 'Local Studio', material: 'Polyester 100%', sizeChartUrl: null,
     images: [{ url: img('skirt1'), altText: null, isPrimary: true }],
@@ -312,7 +317,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 5, name: 'Áo khoác blazer một lớp', slug: 'ao-khoac-blazer-mot-lop',
-    basePrice: 890000, primaryImageUrl: img('blazer1'), categoryName: 'Áo khoác',
+    basePrice: 890000, primaryImageUrl: img('blazer1'), categoryName: 'Áo khoác', audience: 'WOMEN',
     description: 'Không lót, mặc được mùa nóng. Vai nhẹ, không độn dày.',
     brand: 'Local Studio', material: 'Linen 55% / Viscose 45%', sizeChartUrl: null,
     images: [{ url: img('blazer1'), altText: null, isPrimary: true }],
@@ -322,7 +327,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 6, name: 'Đầm lụa cổ vuông', slug: 'dam-lua-co-vuong',
-    basePrice: 720000, primaryImageUrl: img('dress1'), categoryName: 'Đầm',
+    basePrice: 720000, primaryImageUrl: img('dress1'), categoryName: 'Đầm', audience: 'WOMEN',
     description: 'Lụa nhân tạo mềm rủ, cổ vuông, tay ngắn.',
     brand: 'Local Studio', material: 'Viscose 100%', sizeChartUrl: null,
     images: [{ url: img('dress1'), altText: null, isPrimary: true }],
@@ -343,8 +348,18 @@ let mockReviewSeq = 1;
 
 const toCard = (p: ProductDetail): ProductCard => ({
   id: p.id, name: p.name, slug: p.slug, basePrice: p.basePrice,
-  primaryImageUrl: p.primaryImageUrl, categoryName: p.categoryName,
+  primaryImageUrl: p.primaryImageUrl, categoryName: p.categoryName, audience: p.audience,
 });
+
+const MOCK_CATEGORIES: Category[] = [
+  { id: 1, name: 'Áo sơ mi', slug: 'ao-so-mi', productCount: 1 },
+  { id: 2, name: 'Quần', slug: 'quan', productCount: 1 },
+  { id: 3, name: 'Áo thun', slug: 'ao-thun', productCount: 1 },
+  { id: 4, name: 'Chân váy', slug: 'chan-vay', productCount: 1 },
+  { id: 5, name: 'Áo khoác', slug: 'ao-khoac', productCount: 1 },
+  { id: 6, name: 'Đầm', slug: 'dam', productCount: 1 },
+  { id: 7, name: 'Phụ kiện', slug: 'phu-kien', productCount: 0 },
+];
 
 let mockCart: Cart = { id: 1, items: [], subtotal: 0 };
 const mockOrders: Order[] = [];
@@ -417,11 +432,32 @@ export const api = {
 
   // ---------- San pham ----------
 
-  async listProducts(page = 0, size = 12): Promise<Page<ProductCard>> {
-    if (!USE_MOCK) return request(`/api/products?page=${page}&size=${size}`);
+  async listProducts(
+    page = 0,
+    size = 12,
+    filters?: { categoryId?: number; audience?: Audience },
+  ): Promise<Page<ProductCard>> {
+    if (!USE_MOCK) {
+      const q = new URLSearchParams({ page: String(page), size: String(size) });
+      if (filters?.categoryId) q.set('categoryId', String(filters.categoryId));
+      if (filters?.audience) q.set('audience', filters.audience);
+      return request(`/api/products?${q}`);
+    }
     await delay();
-    const items = MOCK_PRODUCTS.slice(page * size, page * size + size).map(toCard);
-    return { items, page, size, totalItems: MOCK_PRODUCTS.length, totalPages: 1 };
+    let pool = MOCK_PRODUCTS;
+    if (filters?.categoryId) {
+      const cat = MOCK_CATEGORIES.find((c) => c.id === filters.categoryId);
+      pool = pool.filter((p) => p.categoryName === cat?.name);
+    }
+    if (filters?.audience) pool = pool.filter((p) => p.audience === filters.audience);
+    const items = pool.slice(page * size, page * size + size).map(toCard);
+    return { items, page, size, totalItems: pool.length, totalPages: Math.max(1, Math.ceil(pool.length / size)) };
+  },
+
+  async categories(): Promise<Category[]> {
+    if (!USE_MOCK) return request('/api/categories');
+    await delay(150);
+    return structuredClone(MOCK_CATEGORIES);
   },
 
   async getProduct(slug: string): Promise<ProductDetail> {

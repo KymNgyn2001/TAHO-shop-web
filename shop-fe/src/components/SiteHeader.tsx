@@ -24,13 +24,13 @@ export default function SiteHeader() {
   return (
     <header className="site-header">
       <div className="wrap site-header__inner">
-        <Link href="/" className="wordmark">Nếp</Link>
+        <Link href="/" className="wordmark">TAHO</Link>
 
         <nav className="header-actions">
           <Link href="/orders">Đơn hàng</Link>
 
           {(user?.role === 'EMPLOYEE' || user?.role === 'MANAGER') && (
-            <Link href="/admin/products/new">Quản trị</Link>
+            <Link href="/admin/products">Quản trị</Link>
           )}
 
           <Link href="/cart" className="cart-link" aria-label="Giỏ hàng">
@@ -70,6 +70,7 @@ export default function SiteHeader() {
                     )}
                     {(user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
                       <>
+                        <Link href="/admin/products" onClick={() => setMenuOpen(false)}>Sản phẩm</Link>
                         <Link href="/admin/products/new" onClick={() => setMenuOpen(false)}>Đăng sản phẩm</Link>
                         <Link href="/admin/categories" onClick={() => setMenuOpen(false)}>Danh mục</Link>
                         <Link href="/admin/reviews" onClick={() => setMenuOpen(false)}>Đánh giá khách hàng</Link>

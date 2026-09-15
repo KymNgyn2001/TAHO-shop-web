@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { toOrder, toProductCard } from '../lib/mappers';
+import { isGreetingOrTooShort, scoreText } from '../lib/search';
 
 export const chatRouter = Router();
 
@@ -11,15 +12,8 @@ const orderInclude = { items: true, shippingMethod: true, discountCode: true } a
 
 const ORDER_CODE_RE = /ORD-\d{8}-\d{4}/i;
 
-function scoreProduct(query: string, haystack: string): number {
-  const q = query.toLowerCase().trim();
-  const h = haystack.toLowerCase();
-  if (!q) return 0;
-  if (h.includes(q)) return 0.9;
-  const words = q.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return 0;
-  return words.filter((w) => h.includes(w)).length / words.length;
-}
+/** Chi coi la ket qua "trung" khi it nhat mot nua so tu trong cau nguoi dung xuat hien o san pham. */
+const MIN_MATCH_SCORE = 0.5;
 
 const chatSchema = z.object({
   message: z.string().min(1),
@@ -85,14 +79,21 @@ chatRouter.post(
       });
     }
 
+    if (isGreetingOrTooShort(message)) {
+      return res.json({
+        role: 'assistant',
+        content: 'Chào bạn! Bạn đang tìm món gì, hay cần mình tra cứu/huỷ đơn hàng thì cứ nói cụ thể hơn cho mình nhé.',
+      });
+    }
+
     const products = await prisma.product.findMany({ include: productInclude });
     const ranked = products
       .map((p) => ({
         product: p,
-        score: scoreProduct(message, [p.name, p.description, p.material, p.brand, p.category?.name]
+        score: scoreText(message, [p.name, p.description, p.material, p.brand, p.category?.name]
           .filter(Boolean).join(' ')),
       }))
-      .filter((r) => r.score > 0)
+      .filter((r) => r.score >= MIN_MATCH_SCORE)
       .sort((a, b) => b.score - a.score)
       .slice(0, 3);
 

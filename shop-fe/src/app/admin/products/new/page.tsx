@@ -35,6 +35,7 @@ export default function NewProductPage() {
   const [basePrice, setBasePrice] = useState('');
   const [material, setMaterial] = useState('');
   const [description, setDescription] = useState('');
+  const [audience, setAudience] = useState<'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX'>('UNISEX');
   const [variants, setVariants] = useState<CreateVariantInput[]>([
     { size: 'M', color: 'Đen', stockQty: 10 },
   ]);
@@ -139,12 +140,14 @@ export default function NewProductPage() {
         description: description || undefined,
         imageUrls: images.map((i) => i.url),
         sizeChartImageUrl: sizeChart?.url,
+        audience,
         variants,
       });
       setSaved(p.name);
       setName(''); setBasePrice(''); setMaterial(''); setDescription('');
       setImages([]);
       setSizeChart(null);
+      setAudience('UNISEX');
       setVariants([{ size: 'M', color: 'Đen', stockQty: 10 }]);
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Lưu sản phẩm thất bại.');
@@ -299,6 +302,15 @@ export default function NewProductPage() {
             <label htmlFor="mat">Chất liệu</label>
             <input id="mat" value={material} onChange={(e) => setMaterial(e.target.value)} />
           </div>
+        </div>
+        <div className="field">
+          <label htmlFor="audience">Đối tượng</label>
+          <select id="audience" value={audience} onChange={(e) => setAudience(e.target.value as typeof audience)}>
+            <option value="UNISEX">Unisex</option>
+            <option value="MEN">Nam</option>
+            <option value="WOMEN">Nữ</option>
+            <option value="KIDS">Trẻ em</option>
+          </select>
         </div>
         <div className="field">
           <label htmlFor="desc">Mô tả</label>

@@ -18,7 +18,7 @@ const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
 const GREETING: Msg = {
   role: 'assistant',
-  content: 'Chào bạn! Mình là trợ lý của Nếp. Bạn cần tìm món gì, hay muốn tra cứu/huỷ đơn hàng, cứ nhắn cho mình nhé.',
+  content: 'Chào bạn! Mình là trợ lý của TAHO. Bạn cần tìm món gì, hay muốn tra cứu/huỷ đơn hàng, cứ nhắn cho mình nhé.',
 };
 
 export default function ChatWidget() {
@@ -57,7 +57,7 @@ export default function ChatWidget() {
       {open && (
         <div className="chatw__panel" role="dialog" aria-label="Chat tư vấn">
           <div className="chatw__head">
-            <span>Trợ lý Nếp</span>
+            <span>Trợ lý TAHO</span>
             <button type="button" className="icon-btn" onClick={() => setOpen(false)} aria-label="Đóng chat">
               <X size={18} />
             </button>

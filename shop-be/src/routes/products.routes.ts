@@ -1,11 +1,14 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Audience, Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
 import { toProductCard, toProductDetail } from '../lib/mappers';
 import { uniqueSlug } from '../lib/slug';
 import { requireRole } from '../middleware/auth';
+
+const AUDIENCES = new Set(Object.values(Audience));
 
 export const productsRouter = Router();
 
@@ -17,8 +20,10 @@ productsRouter.get(
     const page = Math.max(0, Number(req.query.page ?? 0));
     const size = Math.min(100, Math.max(1, Number(req.query.size ?? 12)));
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
+    const audienceParam = req.query.audience as string | undefined;
+    const audience = audienceParam && AUDIENCES.has(audienceParam as Audience) ? (audienceParam as Audience) : undefined;
 
-    const where = categoryId ? { categoryId } : {};
+    const where = { ...(categoryId ? { categoryId } : {}), ...(audience ? { audience } : {}) };
     const [items, totalItems] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -102,6 +107,7 @@ const createProductSchema = z.object({
   material: z.string().optional(),
   imageUrls: z.array(z.string().min(1)).min(1, 'Can it nhat 1 anh san pham.'),
   sizeChartImageUrl: z.string().optional(),
+  audience: z.enum(['MEN', 'WOMEN', 'KIDS', 'UNISEX']).optional(),
   variants: z.array(variantInputSchema).min(1, 'Can it nhat 1 phan loai (size/mau).'),
 });
 
@@ -128,6 +134,7 @@ productsRouter.post(
         brand: body.brand,
         material: body.material,
         sizeChartUrl: body.sizeChartImageUrl,
+        audience: body.audience,
         images: {
           create: body.imageUrls.map((url, i) => ({ url, isPrimary: i === 0, sortOrder: i })),
         },
@@ -146,5 +153,30 @@ productsRouter.post(
     });
 
     res.status(201).json(toProductDetail(product));
+  }),
+);
+
+productsRouter.delete(
+  '/admin/products/:id',
+  requireRole('EMPLOYEE', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    try {
+      await prisma.product.delete({ where: { id } });
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+        throw Errors.notFound('Khong tim thay san pham.');
+      }
+      const message = e instanceof Error ? e.message : '';
+      const isForeignKeyViolation =
+        (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') ||
+        message.includes('foreign key constraint') ||
+        message.includes('OrderItem_productId_fkey');
+      if (isForeignKeyViolation) {
+        throw Errors.conflict('PRODUCT_HAS_ORDERS', 'San pham nay da co trong don hang, khong the xoa.');
+      }
+      throw e;
+    }
+    res.status(204).send();
   }),
 );
