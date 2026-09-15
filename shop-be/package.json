@@ -11,9 +11,9 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "seed": "ts-node prisma/seed.ts",
-    "db:up": "\"C:\\Program Files\\PostgreSQL\\18\\bin\\pg_ctl.exe\" -D \"C:\\Users\\NGUYNT~1\\pgdata-shop\" -l \"C:\\Users\\NGUYNT~1\\pgdata-shop\\logfile.txt\" start",
-    "db:down": "\"C:\\Program Files\\PostgreSQL\\18\\bin\\pg_ctl.exe\" -D \"C:\\Users\\NGUYNT~1\\pgdata-shop\" stop",
-    "db:status": "\"C:\\Program Files\\PostgreSQL\\18\\bin\\pg_ctl.exe\" -D \"C:\\Users\\NGUYNT~1\\pgdata-shop\" status"
+    "db:up": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db.ps1 -Action up",
+    "db:down": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db.ps1 -Action down",
+    "db:status": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/db.ps1 -Action status"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
