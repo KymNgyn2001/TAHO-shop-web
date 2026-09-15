@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
 import type { ProductCard } from '@/lib/api-contract';
 import { adminApi } from '@/lib/admin-api';
@@ -83,7 +83,10 @@ export default function AdminProductsPage() {
                     <td>{p.categoryName ?? '—'}</td>
                     <td>{AUDIENCE_VI[p.audience] ?? p.audience}</td>
                     <td className="num">{vnd(p.basePrice)}</td>
-                    <td>
+                    <td style={{ display: 'flex', gap: '0.25rem' }}>
+                      <Link href={`/admin/products/${p.slug}/edit`} className="icon-btn" aria-label={`Sửa ${p.name}`}>
+                        <Pencil size={14} />
+                      </Link>
                       <button
                         type="button" className="icon-btn" aria-label={`Xoá ${p.name}`}
                         disabled={deletingId === p.id}

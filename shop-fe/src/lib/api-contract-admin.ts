@@ -173,6 +173,10 @@ export interface ReplyReviewRequest {
 // POST   /api/admin/products  CreateProductRequest -> ProductDetail (201) [EMPLOYEE, MANAGER]
 //        BE phai sinh embedding/chi muc tim kiem cho san pham moi NGAY trong luong nay,
 //        neu khong san pham se khong bao gio xuat hien trong tim kiem.
+// PATCH  /api/admin/products/{id}  CreateProductRequest -> ProductDetail  [EMPLOYEE, MANAGER]
+//        Gui lai TOAN BO thong tin (nhu tao moi) — anh bi thay het, bien the doi chieu
+//        theo cap (size, color): trung thi cap nhat gia/ton kho, khong trung thi tao/xoa.
+//        Bien the da tung ban/dang trong gio khach khac se khong bi xoa, chi tat ton kho ve 0.
 // DELETE /api/admin/products/{id}                 -> 204                  [EMPLOYEE, MANAGER]
 //        Loi: 409 PRODUCT_HAS_ORDERS (san pham da nam trong don hang, khong xoa duoc)
 //

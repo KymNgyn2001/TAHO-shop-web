@@ -69,7 +69,10 @@ export default function ProductPage() {
   }, [product, color]);
 
   useEffect(() => {
-    setActiveImage(0);
+    function reset() {
+      setActiveImage(0);
+    }
+    reset();
   }, [galleryImages]);
   const selected = useMemo(
     () =>

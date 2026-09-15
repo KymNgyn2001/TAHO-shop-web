@@ -218,6 +218,25 @@ export const adminApi = {
     };
   },
 
+  async updateProduct(id: number, body: CreateProductRequest): Promise<ProductDetail> {
+    if (!USE_MOCK) return request(`/api/admin/products/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+    await delay(600);
+    const category = mockCategories.find((c) => c.id === body.categoryId);
+    return {
+      id,
+      name: body.name,
+      slug: slugify(body.name),
+      basePrice: body.basePrice,
+      primaryImageUrl: body.images[0]?.url ?? null,
+      categoryName: category?.name ?? null,
+      audience: body.audience ?? 'UNISEX',
+      description: body.description ?? null,
+      brand: body.brand ?? null,
+      material: body.material ?? null,
+      sizeChartUrl: body.sizeChartImageUrl ?? null,
+    };
+  },
+
   async deleteProduct(id: number): Promise<void> {
     if (!USE_MOCK) return request(`/api/admin/products/${id}`, { method: 'DELETE' });
     await delay(300);

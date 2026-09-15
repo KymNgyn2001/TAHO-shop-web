@@ -162,6 +162,97 @@ productsRouter.post(
   }),
 );
 
+productsRouter.patch(
+  '/admin/products/:id',
+  requireRole('EMPLOYEE', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) throw Errors.notFound('Khong tim thay san pham.');
+
+    const body = createProductSchema.parse(req.body);
+    const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
+    if (!category) throw Errors.validation('Danh muc khong ton tai.', 'categoryId');
+
+    await prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id },
+        data: {
+          name: body.name,
+          categoryId: body.categoryId,
+          basePrice: body.basePrice,
+          description: body.description,
+          brand: body.brand,
+          material: body.material,
+          sizeChartUrl: body.sizeChartImageUrl,
+          audience: body.audience,
+        },
+      });
+
+      // Anh: thay toan bo — anh khong bi rang buoc khoa ngoai boi bang nao khac.
+      await tx.productImage.deleteMany({ where: { productId: id } });
+      await tx.productImage.createMany({
+        data: body.images.map((img, i) => ({
+          productId: id,
+          url: img.url,
+          color: img.color,
+          isPrimary: i === 0,
+          sortOrder: i,
+        })),
+      });
+
+      // Bien the: doi chieu theo cap (size, color) de giu nguyen id cho bien the
+      // da co (tranh vo du lieu gio hang/don hang cu dang tro toi id do).
+      const existingVariants = await tx.variant.findMany({ where: { productId: id } });
+      const keyOf = (size: string, color: string) => `${size}::${color}`;
+      const incomingKeys = new Set(body.variants.map((v) => keyOf(v.size, v.color)));
+
+      for (const ev of existingVariants) {
+        if (incomingKeys.has(keyOf(ev.size, ev.color))) continue;
+        const [cartRefs, orderRefs] = await Promise.all([
+          tx.cartItem.count({ where: { variantId: ev.id } }),
+          tx.orderItem.count({ where: { variantId: ev.id } }),
+        ]);
+        if (cartRefs === 0 && orderRefs === 0) {
+          await tx.variant.delete({ where: { id: ev.id } });
+        } else {
+          // Da tung ban/dang trong gio ai do -> khong xoa duoc, chi tat ton kho.
+          await tx.variant.update({ where: { id: ev.id }, data: { stockQty: 0 } });
+        }
+      }
+
+      for (const v of body.variants) {
+        const match = existingVariants.find((ev) => keyOf(ev.size, ev.color) === keyOf(v.size, v.color));
+        if (match) {
+          await tx.variant.update({
+            where: { id: match.id },
+            data: { colorHex: v.colorHex, priceOverride: v.priceOverride ?? null, stockQty: v.stockQty },
+          });
+        } else {
+          await tx.variant.create({
+            data: {
+              productId: id,
+              sku: `${existing.slug.slice(0, 12).toUpperCase()}-${v.size}-${Date.now().toString(36).slice(-5)}`
+                .replace(/\s+/g, '').slice(0, 40).toUpperCase(),
+              size: v.size,
+              color: v.color,
+              colorHex: v.colorHex,
+              priceOverride: v.priceOverride,
+              stockQty: v.stockQty,
+            },
+          });
+        }
+      }
+    });
+
+    const updated = await prisma.product.findUniqueOrThrow({
+      where: { id },
+      include: { ...productInclude, variants: true },
+    });
+    res.json(toProductDetail(updated));
+  }),
+);
+
 productsRouter.delete(
   '/admin/products/:id',
   requireRole('EMPLOYEE', 'MANAGER'),
