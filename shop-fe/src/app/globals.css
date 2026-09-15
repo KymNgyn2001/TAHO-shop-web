@@ -1,0 +1,264 @@
+/* =====================================================================
+   src/app/globals.css
+   He thong thiet ke — dat o day de UI khong phu thuoc phien ban Tailwind.
+   ===================================================================== */
+
+@import "tailwindcss";
+
+:root {
+  --ink:    #22201C;
+  --paper:  #FFFFFF;
+  --wash:   #ECEDEA;
+  --accent: #6E2B4E;
+  --muted:  #7A766E;
+  --line:   #DDDAD3;
+
+  --step--1: 0.8125rem;
+  --step-0:  0.9375rem;
+  --step-1:  1.125rem;
+  --step-2:  1.5rem;
+  --step-3:  2.25rem;
+
+  --gutter: 2px;
+  --pad: 1.25rem;
+}
+
+* { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans), system-ui, sans-serif;
+  font-size: var(--step-0);
+  font-weight: 300;
+  line-height: 1.6;
+}
+
+a { color: inherit; text-decoration: none; }
+button { font: inherit; cursor: pointer; }
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* ---------- Khung trang ---------- */
+
+.wrap { max-width: 1180px; margin: 0 auto; padding: 0 var(--pad); }
+
+.site-header {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+}
+.site-header__inner {
+  display: flex; align-items: center; justify-content: space-between;
+  height: 58px;
+}
+.wordmark {
+  font-size: var(--step-1); font-weight: 700; letter-spacing: -0.02em;
+}
+.header-actions { display: flex; align-items: center; gap: 1.25rem; }
+
+.cart-link { position: relative; display: flex; }
+.cart-count {
+  position: absolute; top: -6px; right: -9px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  background: var(--accent); color: #fff;
+  border-radius: 9px;
+  font-size: 11px; font-weight: 500; line-height: 17px; text-align: center;
+}
+
+/* ---------- O tim kiem: nhan vat chinh ---------- */
+
+.finder { padding: 2.75rem 0 2rem; }
+
+.finder__lead {
+  font-size: var(--step-3);
+  font-weight: 300;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  max-width: 16ch;
+  margin: 0 0 1.75rem;
+}
+
+.finder__field {
+  display: flex; align-items: center; gap: 0.75rem;
+  border-bottom: 3px solid var(--ink);
+  padding-bottom: 0.625rem;
+}
+.finder__field:focus-within { border-bottom-color: var(--accent); }
+
+.finder__input {
+  flex: 1; min-width: 0;
+  border: 0; background: transparent; color: var(--ink);
+  font-size: var(--step-1); font-weight: 300;
+  padding: 0.25rem 0;
+}
+.finder__input::placeholder { color: var(--muted); }
+.finder__input:focus { outline: none; }
+
+.icon-btn {
+  display: grid; place-items: center;
+  width: 38px; height: 38px;
+  border: 0; background: transparent; color: var(--ink);
+  border-radius: 4px;
+}
+.icon-btn:hover { background: var(--wash); }
+
+/* Vach thuoc day — chi tiet rieng cua shop quan ao */
+.ruler {
+  height: 11px; margin-top: 3px;
+  background-image: repeating-linear-gradient(
+    to right, var(--line) 0 1px, transparent 1px 9px);
+  background-position: top left;
+  background-repeat: repeat-x;
+}
+
+.finder__hint {
+  margin: 0.875rem 0 0;
+  font-size: var(--step--1); color: var(--muted);
+}
+.chip {
+  border: 1px solid var(--line); background: transparent;
+  padding: 0.3rem 0.7rem; border-radius: 999px;
+  font-size: var(--step--1); color: var(--ink);
+}
+.chip:hover { border-color: var(--ink); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.875rem; }
+
+.dropzone-on {
+  background: var(--wash);
+  outline: 2px dashed var(--accent); outline-offset: 6px;
+}
+
+/* ---------- Luoi san pham ---------- */
+
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  border-top: 1px solid var(--line);
+  padding-top: 0.875rem; margin-top: 2.25rem;
+}
+.section-head h2 {
+  margin: 0; font-size: var(--step-0); font-weight: 500; letter-spacing: -0.01em;
+}
+.section-head span { font-size: var(--step--1); color: var(--muted); }
+
+.grid-products {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--gutter) var(--gutter);
+  margin: var(--gutter) 0 0;
+}
+@media (min-width: 768px) { .grid-products { grid-template-columns: repeat(3, 1fr); } }
+@media (min-width: 1040px) { .grid-products { grid-template-columns: repeat(4, 1fr); } }
+
+.pcard { display: block; }
+.pcard__media {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  background: var(--wash);
+  overflow: hidden;
+}
+.pcard__media img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+}
+.pcard__badge {
+  position: absolute; left: 0; bottom: 0;
+  background: var(--ink); color: var(--paper);
+  font-size: 11px; font-weight: 500;
+  padding: 3px 7px;
+}
+.pcard__body {
+  display: flex; justify-content: space-between; align-items: baseline;
+  gap: 0.75rem; padding: 0.625rem 0.25rem 1.5rem;
+}
+.pcard__name {
+  font-size: var(--step-0); line-height: 1.35; margin: 0;
+}
+.pcard__price {
+  font-size: var(--step-0); font-weight: 500;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+
+/* ---------- Trang chi tiet ---------- */
+
+.detail { display: grid; gap: 1.75rem; padding-bottom: 4rem; }
+@media (min-width: 900px) {
+  .detail { grid-template-columns: 1.1fr 0.9fr; gap: 3rem; align-items: start; }
+  .detail__info { position: sticky; top: 78px; }
+}
+
+.detail__gallery { display: grid; gap: var(--gutter); }
+.detail__gallery img { width: 100%; display: block; background: var(--wash); }
+
+.detail__name {
+  font-size: var(--step-2); font-weight: 300; letter-spacing: -0.02em;
+  line-height: 1.2; margin: 0 0 0.5rem;
+}
+.detail__price {
+  font-size: var(--step-1); font-weight: 500;
+  font-variant-numeric: tabular-nums; margin: 0 0 1.5rem;
+}
+.detail__meta {
+  border-top: 1px solid var(--line); margin-top: 1.75rem; padding-top: 1rem;
+  font-size: var(--step--1); color: var(--muted);
+}
+.detail__meta dt { font-weight: 500; color: var(--ink); }
+.detail__meta dd { margin: 0 0 0.625rem; }
+
+.opt-label {
+  font-size: var(--step--1); font-weight: 500;
+  margin: 0 0 0.5rem;
+}
+.opt-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.25rem; }
+
+.swatch {
+  min-width: 46px; height: 40px; padding: 0 0.75rem;
+  border: 1px solid var(--line); background: transparent;
+  font-size: var(--step--1);
+}
+.swatch[aria-pressed="true"] { border-color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); }
+.swatch:disabled {
+  color: var(--muted); cursor: not-allowed;
+  background: linear-gradient(to top left,
+    transparent calc(50% - 1px), var(--line) 50%, transparent calc(50% + 1px));
+}
+
+.swatch--color { display: inline-flex; align-items: center; gap: 0.5rem; }
+.swatch--color i {
+  width: 14px; height: 14px; border: 1px solid var(--line); display: block;
+}
+
+.btn-primary {
+  width: 100%; height: 52px;
+  background: var(--accent); color: #fff; border: 0; border-radius: 4px;
+  font-size: var(--step-0); font-weight: 500;
+}
+.btn-primary:hover { background: #5A2240; }
+.btn-primary:disabled { background: var(--line); color: var(--muted); cursor: not-allowed; }
+
+.stock-note { margin: 0.75rem 0 0; font-size: var(--step--1); color: var(--accent); }
+
+/* ---------- Trang thai ---------- */
+
+.skeleton { background: var(--wash); }
+.empty {
+  border-top: 1px solid var(--line);
+  padding: 3.5rem 0; text-align: center;
+}
+.empty p { margin: 0 0 1rem; color: var(--muted); font-size: var(--step-0); }
+
+.error-bar {
+  border-left: 3px solid var(--accent);
+  background: var(--wash);
+  padding: 0.75rem 1rem; margin: 1rem 0;
+  font-size: var(--step--1);
+}

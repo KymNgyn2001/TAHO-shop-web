@@ -1,0 +1,192 @@
+/* =====================================================================
+   BO SUNG CHO globals.css  —  dan vao CUOI file
+   Feed cuon doc + trang quan tri
+   ===================================================================== */
+
+/* ---------- Chuyen doi kieu xem ---------- */
+
+.view-toggle {
+  display: inline-flex; border: 1px solid var(--line); border-radius: 4px;
+  overflow: hidden;
+}
+.view-toggle button {
+  border: 0; background: transparent; color: var(--muted);
+  padding: 0.4rem 0.9rem; font-size: var(--step--1);
+}
+.view-toggle button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+
+/* ---------- Feed cuon doc toan man hinh ---------- */
+
+.feed {
+  height: calc(100dvh - 58px);
+  overflow-y: auto;
+  scroll-snap-type: y mandatory;
+  scrollbar-width: none;
+  margin: 0 calc(var(--pad) * -1);
+}
+.feed::-webkit-scrollbar { display: none; }
+
+.slide {
+  position: relative;
+  height: calc(100dvh - 58px);
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+.slide__img {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  opacity: 0;
+  transition: opacity 500ms ease;
+}
+.slide__img--on { opacity: 1; }
+
+/* Lop phu de chu doc duoc tren anh sang */
+.slide__scrim {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top,
+    rgba(18,16,14,0.78) 0%,
+    rgba(18,16,14,0.30) 32%,
+    rgba(18,16,14,0) 58%);
+  pointer-events: none;
+}
+
+.slide__body {
+  position: absolute; left: 0; right: 0; bottom: 0;
+  padding: 1.5rem var(--pad) 2rem;
+  color: #fff;
+  display: grid; gap: 0.75rem;
+}
+.slide__name {
+  margin: 0; font-size: var(--step-2); font-weight: 300;
+  letter-spacing: -0.02em; line-height: 1.15; max-width: 14ch;
+}
+.slide__price {
+  font-size: var(--step-1); font-weight: 500; font-variant-numeric: tabular-nums;
+}
+.slide__cat {
+  font-size: var(--step--1); opacity: 0.75;
+}
+.slide__cta {
+  justify-self: start;
+  background: #fff; color: var(--ink); border: 0;
+  padding: 0.7rem 1.4rem; border-radius: 999px;
+  font-size: var(--step-0); font-weight: 500;
+}
+.slide__cta:active { transform: scale(0.97); }
+
+/* Vach chi so anh dang xem — thay cho cham tron cho gon */
+.slide__ticks {
+  position: absolute; top: 0.75rem; left: var(--pad); right: var(--pad);
+  display: flex; gap: 4px;
+}
+.slide__ticks i {
+  flex: 1; height: 2px; background: rgba(255,255,255,0.3);
+}
+.slide__ticks i[data-on="true"] { background: #fff; }
+
+.feed__nudge {
+  position: absolute; left: 50%; bottom: 0.5rem;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,0.7); font-size: var(--step--1);
+  animation: nudge 2.4s ease-in-out 3;
+}
+@keyframes nudge {
+  0%, 100% { transform: translate(-50%, 0); opacity: 0.7; }
+  50%      { transform: translate(-50%, -6px); opacity: 1; }
+}
+
+/* ---------- Trang quan tri ---------- */
+
+.admin { padding: 1.75rem 0 4rem; display: grid; gap: 1.75rem; }
+
+.admin h1 {
+  font-size: var(--step-2); font-weight: 300; letter-spacing: -0.02em; margin: 0;
+}
+
+.field { display: grid; gap: 0.4rem; margin-bottom: 1rem; }
+.field label { font-size: var(--step--1); font-weight: 500; }
+.field input, .field textarea, .field select {
+  border: 1px solid var(--line); border-radius: 4px;
+  padding: 0.6rem 0.75rem; font: inherit; color: var(--ink);
+  background: var(--paper);
+}
+.field input:focus, .field textarea:focus, .field select:focus {
+  outline: none; border-color: var(--ink);
+}
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+
+.dropbox {
+  border: 1px dashed var(--line); border-radius: 4px;
+  padding: 2rem 1rem; text-align: center; color: var(--muted);
+  font-size: var(--step--1);
+}
+.dropbox--hot { border-color: var(--accent); background: var(--wash); color: var(--ink); }
+
+.thumbs { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.75rem; }
+.thumb { position: relative; width: 84px; aspect-ratio: 3/4; background: var(--wash); }
+.thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.thumb button {
+  position: absolute; top: 2px; right: 2px;
+  width: 20px; height: 20px; border: 0; border-radius: 50%;
+  background: rgba(18,16,14,0.75); color: #fff; line-height: 1;
+  display: grid; place-items: center;
+}
+.thumb__main {
+  position: absolute; left: 0; bottom: 0;
+  background: var(--ink); color: #fff; font-size: 10px; padding: 2px 5px;
+}
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+.tag {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border: 1px solid var(--line); border-radius: 999px;
+  padding: 0.3rem 0.75rem; font-size: var(--step--1);
+}
+.tag[aria-pressed="true"] { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+.tag small { opacity: 0.6; }
+
+/* ---------- Bang va the so lieu ---------- */
+
+.stat-row {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px;
+  background: var(--line); border: 1px solid var(--line);
+}
+@media (min-width: 720px) { .stat-row { grid-template-columns: repeat(4, 1fr); } }
+
+.stat { background: var(--paper); padding: 1rem; }
+.stat__label { font-size: var(--step--1); color: var(--muted); margin: 0 0 0.3rem; }
+.stat__value {
+  font-size: var(--step-2); font-weight: 500;
+  font-variant-numeric: tabular-nums; letter-spacing: -0.02em;
+}
+.stat__delta { font-size: var(--step--1); }
+.stat__delta[data-dir="up"]   { color: #2E6B3E; }
+.stat__delta[data-dir="down"] { color: var(--accent); }
+
+.panel { border: 1px solid var(--line); padding: 1.25rem; }
+.panel h2 {
+  margin: 0 0 1rem; font-size: var(--step-0); font-weight: 500;
+}
+
+.table { width: 100%; border-collapse: collapse; font-size: var(--step--1); }
+.table th {
+  text-align: left; font-weight: 500; color: var(--muted);
+  border-bottom: 1px solid var(--line); padding: 0.5rem 0.5rem 0.5rem 0;
+}
+.table td {
+  padding: 0.65rem 0.5rem 0.65rem 0;
+  border-bottom: 1px solid var(--line);
+}
+.table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+.pill {
+  display: inline-block; padding: 0.15rem 0.55rem;
+  border: 1px solid var(--line); border-radius: 999px; font-size: 11px;
+}
+.pill[data-s="COMPLETED"] { border-color: #2E6B3E; color: #2E6B3E; }
+.pill[data-s="CANCELLED"] { border-color: var(--accent); color: var(--accent); }
+
+.table-scroll { overflow-x: auto; }

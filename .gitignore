@@ -1,0 +1,21 @@
+node_modules/
+.next/
+dist/
+*.tsbuildinfo
+
+# secrets
+.env
+.env.local
+.env*.local
+
+# backend
+shop-be/uploads/*
+!shop-be/uploads/.gitkeep
+shop-be/prisma/dev.db
+shop-be/prisma/dev.db-journal
+
+*.log
+
+# os / editor
+.DS_Store
+Thumbs.db
