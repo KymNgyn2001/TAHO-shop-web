@@ -4,7 +4,7 @@ const GREETINGS = new Set([
 ]);
 
 function stripDiacritics(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '');
+  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, (m) => (m === 'Đ' ? 'D' : 'd'));
 }
 
 function tokenize(text: string): string[] {
@@ -13,6 +13,25 @@ function tokenize(text: string): string[] {
     .normalize('NFC')
     .split(/[^\p{L}0-9]+/u)
     .filter((w) => w.length >= 2);
+}
+
+/**
+ * Tu chuc nang khong mang nghia san pham — loai ra truoc khi tinh diem trung khop,
+ * neu khong cau tu nhien ("minh muon mua ao") se bi loang diem vi qua nhieu tu dem.
+ */
+const STOPWORDS = new Set([
+  'minh', 'toi', 'em', 'anh', 'chi', 'ban', 'ban',
+  'muon', 'can', 'mua', 'tim', 'kiem', 'xem', 'giup', 'lam',
+  'cho', 'la', 'co', 'duoc', 'voi', 'va', 'cua', 'o', 'tai',
+  'mot', 'cai', 'con', 'nay', 'do', 'kia', 'thi', 'the', 'vay',
+  'nhe', 'nha', 'a', 'sao', 'khong', 'hay', 'hoac', 'nhu', 'nao',
+  'de', 'roi', 'dang', 'se', 'da', 'rat', 'qua', 'hon', 'nhat',
+  'please', 'ye', 'yeu',
+]);
+
+function contentWords(words: string[]): string[] {
+  const filtered = words.filter((w) => !STOPWORDS.has(stripDiacritics(w)));
+  return filtered.length > 0 ? filtered : words;
 }
 
 /** true neu cau chi la loi chao/qua ngan, khong dang de dem la 1 cau tim kiem that. */
@@ -29,7 +48,7 @@ export function isGreetingOrTooShort(message: string): boolean {
  * Tra ve ty le so tu trong query xuat hien trong haystack.
  */
 export function scoreText(query: string, haystack: string): number {
-  const qWords = tokenize(query);
+  const qWords = contentWords(tokenize(query));
   if (qWords.length === 0) return 0;
   const hWords = new Set(tokenize(haystack));
   const hits = qWords.filter((w) => hWords.has(w)).length;
