@@ -23,6 +23,7 @@ export default function ProductPage() {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const [showSizeChart, setShowSizeChart] = useState(false);
+  const [activeImage, setActiveImage] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -66,6 +67,10 @@ export default function ProductPage() {
     const general = product.images.filter((im) => !im.color);
     return general.length > 0 ? general : product.images;
   }, [product, color]);
+
+  useEffect(() => {
+    setActiveImage(0);
+  }, [galleryImages]);
   const selected = useMemo(
     () =>
       product?.variants.find((v) => v.color === color && v.size === size) ??
@@ -112,9 +117,30 @@ export default function ProductPage() {
     <div className="wrap">
       <div className="detail">
         <div className="detail__gallery">
-          {galleryImages.map((im, i) => (
-            <img key={im.url + i} src={im.url} alt={im.altText ?? product.name} />
-          ))}
+          <div className="detail__main-image">
+            {galleryImages[activeImage] && (
+              <img
+                src={galleryImages[activeImage].url}
+                alt={galleryImages[activeImage].altText ?? product.name}
+              />
+            )}
+          </div>
+          {galleryImages.length > 1 && (
+            <div className="detail__thumbs">
+              {galleryImages.map((im, i) => (
+                <button
+                  key={im.url + i}
+                  type="button"
+                  className="detail__thumb"
+                  aria-pressed={activeImage === i}
+                  aria-label={`Xem ảnh ${i + 1}`}
+                  onClick={() => setActiveImage(i)}
+                >
+                  <img src={im.url} alt="" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="detail__info">

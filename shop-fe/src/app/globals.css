@@ -196,8 +196,22 @@ button { font: inherit; cursor: pointer; }
   .detail__info { position: sticky; top: 78px; }
 }
 
-.detail__gallery { display: grid; gap: var(--gutter); }
-.detail__gallery img { width: 100%; display: block; background: var(--wash); }
+.detail__gallery { display: grid; gap: 0.6rem; }
+
+.detail__main-image { aspect-ratio: 3 / 4; background: var(--wash); overflow: hidden; }
+.detail__main-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.detail__thumbs {
+  display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 2px;
+}
+.detail__thumb {
+  flex: 0 0 auto; width: 60px; aspect-ratio: 3 / 4;
+  padding: 0; border: 2px solid transparent; background: var(--wash);
+  overflow: hidden; opacity: 0.7;
+}
+.detail__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.detail__thumb:hover { opacity: 1; }
+.detail__thumb[aria-pressed="true"] { border-color: var(--ink); opacity: 1; }
 
 .detail__name {
   font-size: var(--step-2); font-weight: 300; letter-spacing: -0.02em;
