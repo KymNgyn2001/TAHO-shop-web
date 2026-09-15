@@ -168,7 +168,7 @@ export default function ProductPage() {
                   setSize(avail?.size ?? null);
                 }}
               >
-                <i style={{ background: v.colorHex ?? 'transparent' }} />
+                {v.colorHex && <i style={{ background: v.colorHex }} />}
                 {v.color}
               </button>
             ))}

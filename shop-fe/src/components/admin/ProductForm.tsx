@@ -13,12 +13,11 @@ const MAX_MB = 5;
 
 type Audience = 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
 type ColorImage = { url: string; name: string };
-type ColorGroup = { id: string; name: string; hex: string; images: ColorImage[] };
+type ColorGroup = { id: string; name: string; images: ColorImage[] };
 
 const newColor = (): ColorGroup => ({
   id: Math.random().toString(36).slice(2),
   name: '',
-  hex: '#000000',
   images: [],
 });
 
@@ -36,14 +35,12 @@ function buildInitialState(initial: ProductDetail) {
     if (!colorOrder.includes(v.color)) colorOrder.push(v.color);
   }
   const colors: ColorGroup[] = colorOrder.map((colorName) => {
-    const variant = initial.variants.find((v) => v.color === colorName);
     const images = initial.images
       .filter((im) => im.color === colorName)
       .map((im) => ({ url: im.url, name: fileNameOf(im.url) }));
     return {
       id: Math.random().toString(36).slice(2),
       name: colorName,
-      hex: variant?.colorHex ?? '#000000',
       images,
     };
   });
@@ -275,7 +272,6 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
           return {
             size: s,
             color: c.name,
-            colorHex: c.hex || undefined,
             priceOverride: cell.priceOverride ? Number(cell.priceOverride) : undefined,
             stockQty: Number(cell.stockQty || 0),
           };
@@ -494,13 +490,6 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
           {colors.map((c) => (
             <div key={c.id} style={{ border: '1px solid var(--line)', borderRadius: 4, padding: '0.85rem' }}>
               <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <input
-                  type="color"
-                  value={c.hex}
-                  onChange={(e) => updateColor(c.id, { hex: e.target.value })}
-                  style={{ width: 36, height: 36, padding: 2, flexShrink: 0 }}
-                  aria-label="Mã màu"
-                />
                 <input
                   value={c.name}
                   onChange={(e) => updateColor(c.id, { name: e.target.value })}
