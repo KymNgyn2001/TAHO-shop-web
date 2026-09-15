@@ -185,11 +185,13 @@ export interface ChatRequest {
 // PATCH  /api/cart/items/{itemId} {quantity}       -> Cart
 // DELETE /api/cart/items/{itemId}                  -> Cart
 //
-// POST /api/orders            CreateOrderRequest -> Order (201)
+// POST /api/orders            CreateOrderRequest -> Order (201)  [khach vang lai duoc]
 //                             409 OUT_OF_STOCK
-// GET  /api/orders                               -> Page<Order>
-// GET  /api/orders/{code}                        -> Order | 404
-// POST /api/orders/{code}/cancel  {reason}       -> Order
+// GET  /api/orders                               -> Page<Order>  [BAT BUOC dang nhap] — don cua chinh tai khoan
+// GET  /api/orders/{code}                        -> Order | 404  [BAT BUOC dang nhap]
+//      Chu don hang HOAC EMPLOYEE/MANAGER moi xem duoc; nguoi khac -> 404 (khong lo thong tin).
+// POST /api/orders/{code}/cancel  {reason}       -> Order        [BAT BUOC dang nhap]
+//      Chi chu don hang hoac MANAGER moi huy duoc.
 //                             409 ORDER_NOT_CANCELLABLE
 //
 // POST /api/chat              ChatRequest -> ChatMessage

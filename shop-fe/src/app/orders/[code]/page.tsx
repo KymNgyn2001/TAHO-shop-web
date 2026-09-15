@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
+import { useRequireRole } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -17,6 +18,7 @@ const STATUS_VI: Record<string, string> = {
 };
 
 export default function OrderDetailPage() {
+  const { ready } = useRequireRole(['CUSTOMER', 'EMPLOYEE', 'MANAGER']);
   const { code } = useParams<{ code: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -25,9 +27,15 @@ export default function OrderDetailPage() {
   const [reason, setReason] = useState('');
 
   useEffect(() => {
-    api.getOrder(code).then(setOrder).catch((e) =>
-      setError(e instanceof ApiException ? e.message : 'Không tìm thấy đơn hàng.'));
-  }, [code]);
+    if (!ready) return;
+    function load() {
+      api.getOrder(code).then(setOrder).catch((e) =>
+        setError(e instanceof ApiException ? e.message : 'Không tìm thấy đơn hàng.'));
+    }
+    load();
+  }, [ready, code]);
+
+  if (!ready) return null;
 
   async function cancel() {
     if (!reason.trim()) return;

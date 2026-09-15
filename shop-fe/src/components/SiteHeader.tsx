@@ -27,7 +27,7 @@ export default function SiteHeader() {
         <Link href="/" className="wordmark">TAHO</Link>
 
         <nav className="header-actions">
-          <Link href="/orders">Đơn hàng</Link>
+          {user && <Link href="/orders">Đơn hàng</Link>}
 
           {(user?.role === 'EMPLOYEE' || user?.role === 'MANAGER') && (
             <Link href="/admin/products">Quản trị</Link>

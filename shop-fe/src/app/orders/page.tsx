@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
+import { useRequireRole } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -17,11 +18,18 @@ const STATUS_VI: Record<string, string> = {
 };
 
 export default function OrdersPage() {
+  const { ready } = useRequireRole(['CUSTOMER', 'EMPLOYEE', 'MANAGER']);
   const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {
-    api.listOrders().then((p) => setOrders(p.items)).catch(() => setOrders([]));
-  }, []);
+    if (!ready) return;
+    function load() {
+      api.listOrders().then((p) => setOrders(p.items)).catch(() => setOrders([]));
+    }
+    load();
+  }, [ready]);
+
+  if (!ready) return null;
 
   if (orders === null) {
     return <div className="wrap orders-page"><div className="skeleton" style={{ height: 200 }} /></div>;

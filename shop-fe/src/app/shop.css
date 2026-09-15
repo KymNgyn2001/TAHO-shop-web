@@ -147,6 +147,11 @@
 .checkout__line--item { color: var(--ink); }
 .checkout__total { display: flex; justify-content: space-between; font-size: var(--step-1); font-weight: 500; border-top: 1px solid var(--line); padding-top: 0.75rem; }
 
+.order-confirm {
+  max-width: 480px; margin: 3rem auto; display: grid; gap: 1rem;
+}
+.order-confirm h1 { font-size: var(--step-2); font-weight: 300; margin: 0; }
+
 /* ---------- Don hang ---------- */
 
 .orders-page { padding: 2rem 0 5rem; display: grid; gap: 1.25rem; }

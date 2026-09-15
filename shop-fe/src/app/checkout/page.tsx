@@ -2,9 +2,9 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { api, ApiException } from '@/lib/api-client';
-import type { Cart, ShippingMethod } from '@/lib/api-contract';
+import type { Cart, Order, ShippingMethod } from '@/lib/api-contract';
 import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 
@@ -13,7 +13,6 @@ const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 type PaymentMethod = 'COD' | 'BANK_TRANSFER';
 
 export default function CheckoutPage() {
-  const router = useRouter();
   const { user } = useAuth();
   const { refresh: refreshHeader } = useCart();
 
@@ -34,6 +33,7 @@ export default function CheckoutPage() {
 
   const [error, setError] = useState<string | null>(null);
   const [placing, setPlacing] = useState(false);
+  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     Promise.all([api.getCart(), api.shippingMethods()]).then(([c, m]) => {
@@ -99,12 +99,43 @@ export default function CheckoutPage() {
         note: note.trim() || undefined,
       });
       await refreshHeader();
-      router.push(`/orders/${order.code}`);
+      setPlacedOrder(order);
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Đặt hàng không thành công.');
     } finally {
       setPlacing(false);
     }
+  }
+
+  if (placedOrder) {
+    return (
+      <div className="wrap checkout">
+        <div className="order-confirm">
+          <h1>Đặt hàng thành công</h1>
+          <p>
+            Mã đơn của bạn là <strong>{placedOrder.code}</strong>. Tổng tiền{' '}
+            <strong>{vnd(placedOrder.totalAmount)}</strong>, thanh toán bằng{' '}
+            {placedOrder.paymentMethod === 'COD' ? 'tiền mặt khi nhận hàng' : 'chuyển khoản ngân hàng'}.
+          </p>
+          {placedOrder.paymentMethod === 'BANK_TRANSFER' && (
+            <p className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+              Vui lòng chuyển khoản và ghi nội dung <strong>{placedOrder.code}</strong> để đơn được xác nhận nhanh hơn.
+            </p>
+          )}
+          {user ? (
+            <Link href={`/orders/${placedOrder.code}`} className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none', textAlign: 'center' }}>
+              Xem chi tiết đơn hàng
+            </Link>
+          ) : (
+            <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)' }}>
+              Bạn đang đặt hàng dưới dạng khách. <Link href="/register" style={{ color: 'var(--accent)', fontWeight: 500 }}>Tạo tài khoản</Link>{' '}
+              để xem lại và theo dõi đơn hàng này sau. Hãy lưu lại mã đơn ở trên.
+            </p>
+          )}
+          <Link href="/" style={{ fontSize: 'var(--step--1)', color: 'var(--muted)' }}>← Tiếp tục mua sắm</Link>
+        </div>
+      </div>
+    );
   }
 
   if (!cart) return <div className="wrap checkout"><div className="skeleton" style={{ height: 300 }} /></div>;

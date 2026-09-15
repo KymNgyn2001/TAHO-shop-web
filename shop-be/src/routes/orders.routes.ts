@@ -7,8 +7,13 @@ import { toOrder } from '../lib/mappers';
 import { nextOrderCode } from '../lib/orderCode';
 import { evaluateDiscountCode } from '../lib/discount';
 import { clearCart, resolveCart } from '../lib/cart';
+import { requireAuth } from '../middleware/auth';
 
 export const ordersRouter = Router();
+
+function isStaff(role: string | undefined): boolean {
+  return role === 'EMPLOYEE' || role === 'MANAGER';
+}
 
 const orderInclude = { items: true, shippingMethod: true, discountCode: true } as const;
 
@@ -126,11 +131,14 @@ ordersRouter.post(
 
 ordersRouter.get(
   '/orders',
+  requireAuth,
   asyncHandler(async (req, res) => {
     const page = Math.max(0, Number(req.query.page ?? 0));
     const size = Math.min(100, Math.max(1, Number(req.query.size ?? 20)));
 
-    const where = req.userId ? { userId: req.userId } : req.sessionId ? { sessionId: req.sessionId } : { id: -1 };
+    // "Don hang cua toi" — luon la don cua chinh tai khoan dang dang nhap,
+    // ke ca voi nhan vien/quan ly (ho khong tu dong thay het don cua khach o day).
+    const where = { userId: req.userId! };
     const [items, totalItems] = await Promise.all([
       prisma.order.findMany({
         where,
@@ -154,11 +162,12 @@ ordersRouter.get(
 
 ordersRouter.get(
   '/orders/:code',
+  requireAuth,
   asyncHandler(async (req, res) => {
     const order = await prisma.order.findUnique({ where: { code: req.params.code }, include: orderInclude });
     if (!order) throw Errors.notFound('Khong tim thay don hang.');
-    const owned = req.userId ? order.userId === req.userId : order.sessionId === req.sessionId;
-    if (!owned) throw Errors.notFound('Khong tim thay don hang.');
+    const allowed = order.userId === req.userId || isStaff(req.userRole);
+    if (!allowed) throw Errors.notFound('Khong tim thay don hang.');
     res.json(toOrder(order));
   }),
 );
@@ -167,12 +176,13 @@ const cancelSchema = z.object({ reason: z.string().min(1, 'Vui long nhap ly do h
 
 ordersRouter.post(
   '/orders/:code/cancel',
+  requireAuth,
   asyncHandler(async (req, res) => {
     const body = cancelSchema.parse(req.body);
     const order = await prisma.order.findUnique({ where: { code: req.params.code }, include: orderInclude });
     if (!order) throw Errors.notFound('Khong tim thay don hang.');
-    const owned = req.userId ? order.userId === req.userId : order.sessionId === req.sessionId;
-    if (!owned) throw Errors.notFound('Khong tim thay don hang.');
+    const allowed = order.userId === req.userId || req.userRole === 'MANAGER';
+    if (!allowed) throw Errors.notFound('Khong tim thay don hang.');
 
     if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
       throw Errors.conflict('ORDER_NOT_CANCELLABLE', 'Don da giao cho van chuyen, khong huy duoc nua.');
