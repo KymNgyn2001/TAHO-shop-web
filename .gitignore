@@ -16,6 +16,9 @@ shop-be/prisma/dev.db-journal
 
 *.log
 
+# repo con rieng (KymNgyn2001/TAHO-shop-web) — khong theo doi long vao repo nay
+/TAHO-shop-web/
+
 # os / editor
 .DS_Store
 Thumbs.db

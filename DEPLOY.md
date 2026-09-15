@@ -5,15 +5,24 @@ Code đã sẵn sàng deploy (có `shop-be/Dockerfile`, biến môi trường đ
 
 ## 0. Đẩy code lên GitHub
 
-Repo git đã được khởi tạo sẵn ở thư mục gốc (`Mq/`). Bạn cần:
+Repo git đã được khởi tạo sẵn ở thư mục gốc (`Mq/`). Bạn đã có sẵn repo GitHub
+`https://github.com/KymNgyn2001/TAHO-shop-web` (hiện đang trống, chỉ có README/LICENSE) —
+dùng repo đó, không cần tạo repo mới:
 
-1. Tạo 1 repo trống trên https://github.com/new (đừng tick "Add README").
-2. Chạy trong thư mục `Mq`:
-   ```bash
-   git remote add origin https://github.com/<ten-ban>/<ten-repo>.git
-   git branch -M main
-   git push -u origin main
-   ```
+```bash
+cd Mq
+git remote add origin https://github.com/KymNgyn2001/TAHO-shop-web.git
+git branch -M main
+git push -u origin main --force
+```
+
+Dùng `--force` vì repo trên GitHub đang có sẵn 1 commit "Initial commit" (README+LICENSE)
+không liên quan tới code này — force-push sẽ thay bằng lịch sử của `Mq`. Nếu muốn giữ lại
+LICENSE gốc, tải file đó về bỏ vào thư mục `Mq` trước khi push.
+
+(Thư mục `TAHO-shop-web/` nằm trong `Mq/` là bản clone rời của chính repo đó — không phải
+một phần của code, đã được thêm vào `.gitignore` để tránh lẫn lộn. Có thể xoá thư mục đó
+đi sau khi push thành công.)
 
 ## 1. Backend + Postgres trên Railway
 
