@@ -5,13 +5,15 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { MessageCircle, X, Send } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
-import type { ProductCard, Order } from '@/lib/api-contract';
+import type { ProductCard, Order, ChatContext } from '@/lib/api-contract';
+import { useCart } from '@/lib/cart-context';
 
 type Msg = {
   role: 'user' | 'assistant';
   content: string;
   products?: ProductCard[];
   order?: Order;
+  cartUpdated?: boolean;
 };
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
@@ -26,7 +28,9 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
+  const [context, setContext] = useState<ChatContext>({});
   const bottomRef = useRef<HTMLDivElement>(null);
+  const { refresh: refreshCart } = useCart();
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,8 +44,10 @@ export default function ChatWidget() {
     setInput('');
     setBusy(true);
     try {
-      const reply = await api.chat({ message: text, history });
+      const reply = await api.chat({ message: text, history, context });
       setMessages((prev) => [...prev, reply]);
+      setContext(reply.context ?? {});
+      if (reply.cartUpdated) await refreshCart();
     } catch (e) {
       setMessages((prev) => [...prev, {
         role: 'assistant',
@@ -81,6 +87,11 @@ export default function ChatWidget() {
                 {m.order && (
                   <Link href={`/orders/${m.order.code}`} className="chatw__order" onClick={() => setOpen(false)}>
                     Đơn {m.order.code} — {m.order.status}
+                  </Link>
+                )}
+                {m.cartUpdated && (
+                  <Link href="/cart" className="chatw__order" onClick={() => setOpen(false)}>
+                    Xem giỏ hàng →
                   </Link>
                 )}
               </div>

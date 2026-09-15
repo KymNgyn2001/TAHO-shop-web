@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
-import { loadCartPayload, resolveCart } from '../lib/cart';
+import { addItemToCart, loadCartPayload, resolveCart } from '../lib/cart';
 
 export const cartRouter = Router();
 
@@ -22,23 +22,7 @@ cartRouter.post(
   asyncHandler(async (req, res) => {
     const body = addSchema.parse(req.body);
     const cart = await resolveCart(req);
-    const variant = await prisma.variant.findUnique({ where: { id: body.variantId } });
-    if (!variant) throw Errors.notFound('Khong tim thay san pham.');
-
-    const existing = await prisma.cartItem.findUnique({
-      where: { cartId_variantId: { cartId: cart.id, variantId: body.variantId } },
-    });
-    const desiredQty = (existing?.quantity ?? 0) + body.quantity;
-    if (variant.stockQty < desiredQty) {
-      throw Errors.conflict('OUT_OF_STOCK', `Size ${variant.size} chi con ${variant.stockQty} san pham.`);
-    }
-
-    await prisma.cartItem.upsert({
-      where: { cartId_variantId: { cartId: cart.id, variantId: body.variantId } },
-      update: { quantity: desiredQty },
-      create: { cartId: cart.id, variantId: body.variantId, quantity: body.quantity },
-    });
-
+    await addItemToCart(cart.id, body.variantId, body.quantity);
     res.json(await loadCartPayload(cart.id));
   }),
 );

@@ -154,6 +154,13 @@ export interface CreateOrderRequest {
 // Chatbot
 // ---------------------------------------------------------------------
 
+export interface ChatContext {
+  /** San pham dang duoc nhac den trong doan chat (tu ket qua goi y gan nhat). */
+  productId?: number;
+  /** Muc gio hang bot vua them — de xu ly "huỷ"/"khỏi lấy" ngay sau do. */
+  lastCartItemId?: number;
+}
+
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
@@ -161,11 +168,16 @@ export interface ChatMessage {
   products?: ProductCard[];
   /** Don bot vua tao hoac huy. */
   order?: Order;
+  /** true neu bot vua them/xoa gio hang -> FE nen goi lai GET /cart de cap nhat badge. */
+  cartUpdated?: boolean;
+  /** FE luu lai va gui kem o luot chat tiep theo, khong tu suy doan. */
+  context?: ChatContext;
 }
 
 export interface ChatRequest {
   message: string;
   history: { role: 'user' | 'assistant'; content: string }[];
+  context?: ChatContext;
 }
 
 // =====================================================================
@@ -197,6 +209,9 @@ export interface ChatRequest {
 //                             409 ORDER_NOT_CANCELLABLE
 //
 // POST /api/chat              ChatRequest -> ChatMessage
+//      FE luu `context` tu response gan nhat va gui lai o request tiep theo —
+//      nho vay bot moi hieu duoc "lay mau den size L 2 cai" sau khi vua goi y san pham,
+//      va "khoi lay"/"huy" ngay sau khi bot vua them gio hang.
 //
 // Xac thuc: header  Authorization: Bearer <jwt>
 // Khach vang lai:   header  X-Session-Id: <uuid luu o localStorage>

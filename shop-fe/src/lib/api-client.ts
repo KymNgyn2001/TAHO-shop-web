@@ -128,6 +128,11 @@ type Page<T> = {
   totalPages: number;
 };
 
+export type ChatContext = {
+  productId?: number;
+  lastCartItemId?: number;
+};
+
 type ChatRequest = {
   message: string;
 };
@@ -137,6 +142,8 @@ type ChatMessage = {
   content: string;
   products?: ProductCard[];
   order?: Order;
+  cartUpdated?: boolean;
+  context?: ChatContext;
 };
 
 export type Role = 'MANAGER' | 'EMPLOYEE' | 'CUSTOMER';
@@ -694,22 +701,25 @@ export const api = {
     return structuredClone(o);
   },
 
-  async chat(body: ChatRequest & { history?: { role: 'user' | 'assistant'; content: string }[] }): Promise<ChatMessage> {
+  async chat(
+    body: ChatRequest & { history?: { role: 'user' | 'assistant'; content: string }[]; context?: ChatContext },
+  ): Promise<ChatMessage> {
     if (!USE_MOCK) {
       return request('/api/chat', { method: 'POST', body: JSON.stringify({ history: [], ...body }) });
     }
     await delay(900);
     const m = body.message.toLowerCase();
     if (m.includes('huỷ') || m.includes('hủy')) {
-      return { role: 'assistant', content: 'Bạn cho mình mã đơn cần huỷ nhé, dạng ORD-20260915-0001.' };
+      return { role: 'assistant', content: 'Bạn cho mình mã đơn cần huỷ nhé, dạng ORD-20260915-0001.', context: body.context };
     }
     if (m.includes('size')) {
-      return { role: 'assistant', content: 'Cao 1m65 nặng 55kg thì size M vừa. Nếu thích rộng thì lấy L.' };
+      return { role: 'assistant', content: 'Cao 1m65 nặng 55kg thì size M vừa. Nếu thích rộng thì lấy L.', context: body.context };
     }
     return {
       role: 'assistant',
       content: 'Mình tìm được vài mẫu hợp ý bạn:',
       products: MOCK_PRODUCTS.slice(0, 3).map(toCard),
+      context: { productId: MOCK_PRODUCTS[0]?.id },
     };
   },
 };

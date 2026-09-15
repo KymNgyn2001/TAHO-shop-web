@@ -74,3 +74,23 @@ export async function loadCartPayload(cartId: number) {
 export async function clearCart(cartId: number) {
   await prisma.cartItem.deleteMany({ where: { cartId } });
 }
+
+/** Dung chung cho POST /cart/items va chatbot — them (hoac cong don) 1 variant vao gio. */
+export async function addItemToCart(cartId: number, variantId: number, quantity: number) {
+  const variant = await prisma.variant.findUnique({ where: { id: variantId } });
+  if (!variant) throw Errors.notFound('Khong tim thay san pham.');
+
+  const existing = await prisma.cartItem.findUnique({
+    where: { cartId_variantId: { cartId, variantId } },
+  });
+  const desiredQty = (existing?.quantity ?? 0) + quantity;
+  if (variant.stockQty < desiredQty) {
+    throw Errors.conflict('OUT_OF_STOCK', `Size ${variant.size} chi con ${variant.stockQty} san pham.`);
+  }
+
+  return prisma.cartItem.upsert({
+    where: { cartId_variantId: { cartId, variantId } },
+    update: { quantity: desiredQty },
+    create: { cartId, variantId, quantity },
+  });
+}

@@ -3,7 +3,7 @@ const GREETINGS = new Set([
   'chao', 'chào', 'chao ban', 'chào bạn', 'xin chao', 'xin chào',
 ]);
 
-function stripDiacritics(s: string): string {
+export function stripDiacritics(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, (m) => (m === 'Đ' ? 'D' : 'd'));
 }
 
