@@ -96,6 +96,8 @@ model ProductImage {
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
   url       String
   altText   String?
+  /** Null = anh chung cho san pham. Co gia tri = chi hien khi khach chon mau nay. */
+  color     String?
   isPrimary Boolean @default(false)
   sortOrder Int     @default(0)
 }

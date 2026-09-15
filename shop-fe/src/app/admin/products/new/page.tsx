@@ -5,15 +5,27 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, X } from 'lucide-react';
 import { adminApi } from '@/lib/admin-api';
 import { ApiException } from '@/lib/api-client';
-import type { CategoryWithCount, CreateVariantInput } from '@/lib/api-contract-admin';
+import type { CategoryWithCount } from '@/lib/api-contract-admin';
 import { useRequireRole } from '@/lib/require-role';
 
 const MAX_MB = 5;
 
+type ColorImage = { url: string; name: string };
+type ColorGroup = { id: string; name: string; hex: string; images: ColorImage[] };
+
+const newColor = (): ColorGroup => ({
+  id: Math.random().toString(36).slice(2),
+  name: '',
+  hex: '#000000',
+  images: [],
+});
+
+const cellKey = (color: string, size: string) => `${color}::${size}`;
+
 export default function NewProductPage() {
   const { ready: roleReady } = useRequireRole(['EMPLOYEE', 'MANAGER']);
 
-  // --- anh ---
+  // --- anh chung (mac dinh / anh bia) ---
   const [images, setImages] = useState<{ url: string; name: string }[]>([]);
   const [uploading, setUploading] = useState(false);
   const [hot, setHot] = useState(false);
@@ -36,9 +48,17 @@ export default function NewProductPage() {
   const [material, setMaterial] = useState('');
   const [description, setDescription] = useState('');
   const [audience, setAudience] = useState<'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX'>('UNISEX');
-  const [variants, setVariants] = useState<CreateVariantInput[]>([
-    { size: 'M', color: 'Đen', stockQty: 10 },
-  ]);
+
+  // --- mau sac + anh rieng tung mau ---
+  const [colors, setColors] = useState<ColorGroup[]>([newColor()]);
+  const [uploadingColorId, setUploadingColorId] = useState<string | null>(null);
+
+  // --- size ---
+  const [sizes, setSizes] = useState<string[]>([]);
+  const [sizeInput, setSizeInput] = useState('');
+
+  // --- ma tran gia / ton kho theo (mau, size) ---
+  const [cells, setCells] = useState<Record<string, { priceOverride: string; stockQty: string }>>({});
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -48,7 +68,7 @@ export default function NewProductPage() {
     if (roleReady) adminApi.listCategories().then(setCategories).catch(() => {});
   }, [roleReady]);
 
-  // ---------------- anh ----------------
+  // ---------------- anh chung ----------------
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -113,32 +133,103 @@ export default function NewProductPage() {
     }
   }
 
-  // ---------------- bien the ----------------
+  // ---------------- mau sac ----------------
 
-  const setVariant = (i: number, patch: Partial<CreateVariantInput>) =>
-    setVariants((prev) => prev.map((v, j) => (j === i ? { ...v, ...patch } : v)));
+  const updateColor = (id: string, patch: Partial<ColorGroup>) =>
+    setColors((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+
+  function pickColorImages(colorId: string) {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.multiple = true;
+    input.onchange = () => uploadColorImages(colorId, input.files);
+    input.click();
+  }
+
+  async function uploadColorImages(colorId: string, files: FileList | null) {
+    if (!files?.length) return;
+    setError(null);
+    setUploadingColorId(colorId);
+    try {
+      for (const file of Array.from(files)) {
+        if (file.size > MAX_MB * 1024 * 1024) {
+          setError(`${file.name} nặng hơn ${MAX_MB}MB. Nén lại rồi thử tiếp.`);
+          continue;
+        }
+        const up = await adminApi.uploadImage(file);
+        setColors((prev) =>
+          prev.map((c) => (c.id === colorId ? { ...c, images: [...c.images, { url: up.url, name: up.fileName }] } : c)),
+        );
+      }
+    } catch (e) {
+      setError(e instanceof ApiException ? e.message : 'Tải ảnh màu thất bại.');
+    } finally {
+      setUploadingColorId(null);
+    }
+  }
+
+  const removeColorImage = (colorId: string, url: string) =>
+    setColors((prev) => prev.map((c) => (c.id === colorId ? { ...c, images: c.images.filter((i) => i.url !== url) } : c)));
+
+  // ---------------- size ----------------
+
+  function addSizes() {
+    const parts = sizeInput.split(',').map((s) => s.trim()).filter(Boolean);
+    if (parts.length === 0) return;
+    setSizes((prev) => {
+      const existingLower = new Set(prev.map((s) => s.toLowerCase()));
+      const additions = parts.filter((p) => !existingLower.has(p.toLowerCase()));
+      return [...prev, ...additions];
+    });
+    setSizeInput('');
+  }
+
+  const removeSize = (s: string) => setSizes((prev) => prev.filter((x) => x !== s));
 
   // ---------------- luu ----------------
+
+  const validColors = colors.filter((c) => c.name.trim() !== '');
+  const validSizes = sizes.filter(Boolean);
+  const hasAnyImage = images.length > 0 || validColors.some((c) => c.images.length > 0);
 
   const ready =
     name.trim() !== '' &&
     categoryId !== null &&
     Number(basePrice) > 0 &&
-    images.length > 0 &&
-    variants.every((v) => v.size && v.color);
+    hasAnyImage &&
+    validColors.length > 0 &&
+    validSizes.length > 0;
 
   async function save() {
     if (!ready) return;
     setSaving(true);
     setError(null);
     try {
+      const payloadImages = [
+        ...images.map((i) => ({ url: i.url })),
+        ...validColors.flatMap((c) => c.images.map((im) => ({ url: im.url, color: c.name }))),
+      ];
+      const variants = validColors.flatMap((c) =>
+        validSizes.map((s) => {
+          const cell = cells[cellKey(c.name, s)] ?? { priceOverride: '', stockQty: '0' };
+          return {
+            size: s,
+            color: c.name,
+            colorHex: c.hex || undefined,
+            priceOverride: cell.priceOverride ? Number(cell.priceOverride) : undefined,
+            stockQty: Number(cell.stockQty || 0),
+          };
+        }),
+      );
+
       const p = await adminApi.createProduct({
         name: name.trim(),
         categoryId: categoryId!,
         basePrice: Number(basePrice),
         material: material || undefined,
         description: description || undefined,
-        imageUrls: images.map((i) => i.url),
+        images: payloadImages,
         sizeChartImageUrl: sizeChart?.url,
         audience,
         variants,
@@ -148,7 +239,9 @@ export default function NewProductPage() {
       setImages([]);
       setSizeChart(null);
       setAudience('UNISEX');
-      setVariants([{ size: 'M', color: 'Đen', stockQty: 10 }]);
+      setColors([newColor()]);
+      setSizes([]);
+      setCells({});
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Lưu sản phẩm thất bại.');
     } finally {
@@ -169,9 +262,9 @@ export default function NewProductPage() {
       )}
       {error && <p className="error-bar">{error}</p>}
 
-      {/* ---------- Ảnh ---------- */}
+      {/* ---------- Ảnh chung ---------- */}
       <section className="panel">
-        <h2>Ảnh sản phẩm</h2>
+        <h2>Ảnh chung (ảnh bìa mặc định)</h2>
         <div
           className={`dropbox${hot ? ' dropbox--hot' : ''}`}
           onDragOver={(e) => { e.preventDefault(); setHot(true); }}
@@ -215,7 +308,7 @@ export default function NewProductPage() {
               ))}
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginTop: '0.5rem' }}>
-              Ảnh đầu tiên hiện ở trang chủ. Thêm ít nhất hai góc chụp để ảnh tự đổi trong feed.
+              Ảnh đầu tiên hiện ở trang chủ. Đây là ảnh dùng chung khi khách chưa chọn màu nào cụ thể.
             </p>
           </>
         )}
@@ -322,44 +415,143 @@ export default function NewProductPage() {
         </div>
       </section>
 
-      {/* ---------- Biến thể ---------- */}
+      {/* ---------- Màu sắc ---------- */}
       <section className="panel">
-        <h2>Size, màu và tồn kho</h2>
-        <div className="table-scroll">
-          <table className="table">
-            <thead>
-              <tr><th>Size</th><th>Màu</th><th>Mã màu</th><th>Tồn</th><th /></tr>
-            </thead>
-            <tbody>
-              {variants.map((v, i) => (
-                <tr key={i}>
-                  <td><input value={v.size} onChange={(e) => setVariant(i, { size: e.target.value })} style={{ width: 64 }} /></td>
-                  <td><input value={v.color} onChange={(e) => setVariant(i, { color: e.target.value })} style={{ width: 110 }} /></td>
-                  <td><input type="color" value={v.colorHex ?? '#000000'} onChange={(e) => setVariant(i, { colorHex: e.target.value })} style={{ width: 44, padding: 2 }} /></td>
-                  <td><input type="number" min={0} value={v.stockQty} onChange={(e) => setVariant(i, { stockQty: Number(e.target.value) })} style={{ width: 72 }} /></td>
-                  <td>
-                    {variants.length > 1 && (
-                      <button type="button" className="icon-btn" aria-label="Xoá dòng"
-                        onClick={() => setVariants((p) => p.filter((_, j) => j !== i))}>
-                        <X size={14} />
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <h2>Màu sắc</h2>
+        <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+          Mỗi màu có thể có ảnh riêng — khách chọn màu nào thì trang sản phẩm đổi sang ảnh của màu đó.
+        </p>
+        <div style={{ display: 'grid', gap: '1rem' }}>
+          {colors.map((c) => (
+            <div key={c.id} style={{ border: '1px solid var(--line)', borderRadius: 4, padding: '0.85rem' }}>
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <input
+                  type="color"
+                  value={c.hex}
+                  onChange={(e) => updateColor(c.id, { hex: e.target.value })}
+                  style={{ width: 36, height: 36, padding: 2, flexShrink: 0 }}
+                  aria-label="Mã màu"
+                />
+                <input
+                  value={c.name}
+                  onChange={(e) => updateColor(c.id, { name: e.target.value })}
+                  placeholder="Tên màu, vd: Đen"
+                  style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 4, padding: '0.5rem 0.7rem', font: 'inherit' }}
+                />
+                {colors.length > 1 && (
+                  <button
+                    type="button" className="icon-btn" aria-label={`Xoá màu ${c.name || ''}`}
+                    onClick={() => setColors((prev) => prev.filter((x) => x.id !== c.id))}
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              <div className="thumbs">
+                {c.images.map((im) => (
+                  <div className="thumb" key={im.url}>
+                    <img src={im.url} alt={im.name} />
+                    <button type="button" onClick={() => removeColorImage(c.id, im.url)} aria-label={`Xoá ${im.name}`}>
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  className="thumb thumb--add"
+                  onClick={() => pickColorImages(c.id)}
+                  disabled={uploadingColorId === c.id}
+                  aria-label={`Thêm ảnh cho màu ${c.name || ''}`}
+                >
+                  <Plus size={18} />
+                  <span>{uploadingColorId === c.id ? 'Đang tải…' : 'Thêm ảnh'}</span>
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-        <button
-          type="button" className="chip" style={{ marginTop: '0.75rem' }}
-          onClick={() => setVariants((p) => [...p, { size: '', color: '', stockQty: 0 }])}
-        >
-          <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm size / màu
+        <button type="button" className="chip" style={{ marginTop: '0.85rem' }} onClick={() => setColors((p) => [...p, newColor()])}>
+          <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm màu
         </button>
       </section>
 
+      {/* ---------- Size ---------- */}
+      <section className="panel">
+        <h2>Size</h2>
+        <div className="tag-row" style={{ marginBottom: '0.85rem' }}>
+          {sizes.map((s) => (
+            <span key={s} className="tag" aria-pressed="true">
+              {s}
+              <button type="button" onClick={() => removeSize(s)} aria-label={`Xoá size ${s}`} style={{ border: 0, background: 'none', cursor: 'pointer', display: 'inline-flex' }}>
+                <X size={12} />
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="field-row" style={{ alignItems: 'end' }}>
+          <div className="field" style={{ margin: 0 }}>
+            <label htmlFor="sizeInput">Thêm size (cách nhau bằng dấu phẩy)</label>
+            <input
+              id="sizeInput"
+              value={sizeInput}
+              onChange={(e) => setSizeInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addSizes()}
+              placeholder="S, M, L, XL"
+            />
+          </div>
+          <button type="button" className="chip" style={{ height: 40 }} onClick={addSizes} disabled={!sizeInput.trim()}>
+            <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm
+          </button>
+        </div>
+      </section>
+
+      {/* ---------- Ma tran gia / ton kho ---------- */}
+      {validColors.length > 0 && validSizes.length > 0 && (
+        <section className="panel">
+          <h2>Số lượng &amp; giá riêng theo màu / size</h2>
+          <div className="table-scroll">
+            <table className="table">
+              <thead>
+                <tr><th>Màu</th><th>Size</th><th>Giá riêng (để trống = giá gốc)</th><th>Tồn kho</th></tr>
+              </thead>
+              <tbody>
+                {validColors.flatMap((c) =>
+                  validSizes.map((s) => {
+                    const key = cellKey(c.name, s);
+                    const cell = cells[key] ?? { priceOverride: '', stockQty: '0' };
+                    return (
+                      <tr key={key}>
+                        <td>{c.name}</td>
+                        <td>{s}</td>
+                        <td>
+                          <input
+                            type="number" min={0} placeholder={basePrice || '0'}
+                            value={cell.priceOverride}
+                            onChange={(e) => setCells((prev) => ({ ...prev, [key]: { ...cell, priceOverride: e.target.value } }))}
+                            style={{ width: 110 }}
+                          />
+                        </td>
+                        <td>
+                          <input
+                            type="number" min={0}
+                            value={cell.stockQty}
+                            onChange={(e) => setCells((prev) => ({ ...prev, [key]: { ...cell, stockQty: e.target.value } }))}
+                            style={{ width: 80 }}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  }),
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
       <button type="button" className="btn-primary" disabled={!ready || saving} onClick={save}>
-        {saving ? 'Đang lưu…' : !ready ? 'Điền đủ tên, giá, loại và ít nhất một ảnh' : 'Lưu sản phẩm'}
+        {saving ? 'Đang lưu…' : !ready ? 'Điền đủ tên, giá, loại, ảnh, ít nhất 1 màu và 1 size' : 'Lưu sản phẩm'}
       </button>
     </div>
   );

@@ -105,7 +105,8 @@ const createProductSchema = z.object({
   description: z.string().optional(),
   brand: z.string().optional(),
   material: z.string().optional(),
-  imageUrls: z.array(z.string().min(1)).min(1, 'Can it nhat 1 anh san pham.'),
+  images: z.array(z.object({ url: z.string().min(1), color: z.string().optional() }))
+    .min(1, 'Can it nhat 1 anh san pham.'),
   sizeChartImageUrl: z.string().optional(),
   audience: z.enum(['MEN', 'WOMEN', 'KIDS', 'UNISEX']).optional(),
   variants: z.array(variantInputSchema).min(1, 'Can it nhat 1 phan loai (size/mau).'),
@@ -136,7 +137,12 @@ productsRouter.post(
         sizeChartUrl: body.sizeChartImageUrl,
         audience: body.audience,
         images: {
-          create: body.imageUrls.map((url, i) => ({ url, isPrimary: i === 0, sortOrder: i })),
+          create: body.images.map((img, i) => ({
+            url: img.url,
+            color: img.color,
+            isPrimary: i === 0,
+            sortOrder: i,
+          })),
         },
         variants: {
           create: body.variants.map((v, i) => ({

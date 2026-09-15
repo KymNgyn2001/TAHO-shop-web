@@ -15,5 +15,6 @@ export const env = {
     .map((s) => s.trim())
     .filter(Boolean),
   uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
+  publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 8080}`).replace(/\/$/, ''),
   maxUploadBytes: Number(process.env.MAX_UPLOAD_MB ?? 5) * 1024 * 1024,
 };

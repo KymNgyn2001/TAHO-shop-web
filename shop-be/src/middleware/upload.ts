@@ -31,7 +31,11 @@ export const upload = multer({
   },
 });
 
-/** Duong dan tuong doi (vd /uploads/2026/09/abc.jpg) de tra ve cho FE va luu DB. */
+/**
+ * URL day du (vd http://192.168.1.93:8080/uploads/2026/09/abc.jpg) de FE hien thi
+ * truc tiep bang <img>, khong phu thuoc FE dang chay o host/cong nao.
+ */
 export function publicUrlFor(filePath: string): string {
-  return `/${path.relative('.', filePath).split(path.sep).join('/')}`;
+  const relative = `/${path.relative('.', filePath).split(path.sep).join('/')}`;
+  return `${env.publicBaseUrl}${relative}`;
 }

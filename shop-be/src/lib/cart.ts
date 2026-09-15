@@ -2,6 +2,7 @@ import { Request } from 'express';
 import { prisma } from './prisma';
 import { Errors } from './apiError';
 import { variantPrice } from './mappers';
+import { toAbsoluteUrlOrNull } from './url';
 
 export async function resolveCart(req: Request) {
   if (req.userId) {
@@ -53,7 +54,7 @@ export async function loadCartPayload(cartId: number) {
       variantId: i.variantId,
       productId: i.variant.productId,
       productName: i.variant.product.name,
-      primaryImageUrl: primary?.url ?? null,
+      primaryImageUrl: toAbsoluteUrlOrNull(primary?.url),
       size: i.variant.size,
       color: i.variant.color,
       unitPrice: price,

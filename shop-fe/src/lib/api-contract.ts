@@ -34,6 +34,8 @@ export interface ProductImage {
   url: string;
   altText: string | null;
   isPrimary: boolean;
+  /** Null = anh chung. Co gia tri = chi hien khi khach chon dung mau nay. */
+  color: string | null;
 }
 
 export interface Variant {

@@ -43,6 +43,12 @@ export interface CreateVariantInput {
   stockQty: number;
 }
 
+export interface CreateProductImageInput {
+  url: string;             // lay tu ket qua uploadImage
+  /** Bo trong = anh chung. Dat ten mau = anh chi hien khi khach chon mau do. */
+  color?: string;
+}
+
 export interface CreateProductRequest {
   name: string;
   categoryId: number;
@@ -50,7 +56,7 @@ export interface CreateProductRequest {
   description?: string;
   brand?: string;
   material?: string;
-  imageUrls: string[];       // lay tu ket qua uploadImage, phan tu [0] la anh chinh
+  images: CreateProductImageInput[]; // phan tu [0] la anh chinh (anh bia)
   sizeChartImageUrl?: string; // anh bang size, cung lay tu uploadImage
   /** Bo trong -> BE mac dinh UNISEX. */
   audience?: 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';

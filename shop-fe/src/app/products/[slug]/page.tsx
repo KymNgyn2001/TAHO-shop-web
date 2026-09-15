@@ -59,6 +59,13 @@ export default function ProductPage() {
     () => product?.variants.filter((v) => v.color === color) ?? [],
     [product, color],
   );
+  const galleryImages = useMemo(() => {
+    if (!product) return [];
+    const forColor = product.images.filter((im) => im.color === color);
+    if (forColor.length > 0) return forColor;
+    const general = product.images.filter((im) => !im.color);
+    return general.length > 0 ? general : product.images;
+  }, [product, color]);
   const selected = useMemo(
     () =>
       product?.variants.find((v) => v.color === color && v.size === size) ??
@@ -105,8 +112,8 @@ export default function ProductPage() {
     <div className="wrap">
       <div className="detail">
         <div className="detail__gallery">
-          {product.images.map((im, i) => (
-            <img key={i} src={im.url} alt={im.altText ?? product.name} />
+          {galleryImages.map((im, i) => (
+            <img key={im.url + i} src={im.url} alt={im.altText ?? product.name} />
           ))}
         </div>
 

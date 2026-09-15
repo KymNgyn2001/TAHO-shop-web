@@ -10,6 +10,7 @@ import {
   Variant,
   DiscountCode,
 } from '@prisma/client';
+import { toAbsoluteUrl, toAbsoluteUrlOrNull } from './url';
 
 type ProductWithRelations = ProductModel & {
   images: ProductImage[];
@@ -36,7 +37,7 @@ export function toVariant(v: Variant, basePrice: number) {
 
 function primaryImageUrl(images: ProductImage[]): string | null {
   const primary = images.find((i) => i.isPrimary) ?? images[0];
-  return primary?.url ?? null;
+  return toAbsoluteUrlOrNull(primary?.url);
 }
 
 export function toProductCard(p: ProductWithRelations, score?: number) {
@@ -58,10 +59,10 @@ export function toProductDetail(p: ProductWithRelations & { variants: Variant[] 
     description: p.description,
     brand: p.brand,
     material: p.material,
-    sizeChartUrl: p.sizeChartUrl,
+    sizeChartUrl: toAbsoluteUrlOrNull(p.sizeChartUrl),
     images: p.images
       .sort((a, b) => a.sortOrder - b.sortOrder)
-      .map((i) => ({ url: i.url, altText: i.altText, isPrimary: i.isPrimary })),
+      .map((i) => ({ url: toAbsoluteUrl(i.url), altText: i.altText, isPrimary: i.isPrimary, color: i.color })),
     variants: p.variants.map((v) => toVariant(v, p.basePrice)),
   };
 }

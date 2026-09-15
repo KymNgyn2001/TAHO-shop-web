@@ -9,6 +9,7 @@ type ProductImage = {
   url: string;
   altText: string | null;
   isPrimary: boolean;
+  color: string | null;
 };
 
 type ProductVariant = {
@@ -274,8 +275,8 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
     description: 'Linen pha cotton, form suông, ít nhăn hơn linen nguyên chất.',
     brand: 'Local Studio', material: 'Linen 70% / Cotton 30%', sizeChartUrl: null,
     images: [
-      { url: img('linen1'), altText: 'Mặt trước', isPrimary: true },
-      { url: img('linen2'), altText: 'Mặt sau', isPrimary: false },
+      { url: img('linen1'), altText: 'Mặt trước', isPrimary: true, color: null },
+      { url: img('linen2'), altText: 'Mặt sau', isPrimary: false, color: null },
     ],
     variants: [
       { id: 101, sku: 'SM-LIN-S-WHT', size: 'S', color: 'Trắng', colorHex: '#FFFFFF', price: 459000, stockQty: 8, inStock: true },
@@ -288,7 +289,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
     basePrice: 620000, primaryImageUrl: img('trouser1'), categoryName: 'Quần', audience: 'MEN',
     description: 'Ống suông, cạp cao, có ly. Vải tuyết mưa ít nhăn.',
     brand: 'Local Studio', material: 'Polyester 65% / Viscose 35%', sizeChartUrl: null,
-    images: [{ url: img('trouser1'), altText: null, isPrimary: true }],
+    images: [{ url: img('trouser1'), altText: null, isPrimary: true, color: null }],
     variants: [
       { id: 201, sku: 'QA-SUO-29-BLK', size: '29', color: 'Đen', colorHex: '#1A1A1A', price: 620000, stockQty: 12, inStock: true },
       { id: 202, sku: 'QA-SUO-30-BLK', size: '30', color: 'Đen', colorHex: '#1A1A1A', price: 620000, stockQty: 3, inStock: true },
@@ -299,7 +300,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
     basePrice: 249000, primaryImageUrl: img('tee1'), categoryName: 'Áo thun', audience: 'UNISEX',
     description: 'Cotton 100% dệt bo gân, dày dặn, không xuyên thấu.',
     brand: 'Basics', material: 'Cotton 100%', sizeChartUrl: null,
-    images: [{ url: img('tee1'), altText: null, isPrimary: true }],
+    images: [{ url: img('tee1'), altText: null, isPrimary: true, color: null }],
     variants: [
       { id: 301, sku: 'AT-GAN-M-NAV', size: 'M', color: 'Xanh navy', colorHex: '#26344D', price: 249000, stockQty: 20, inStock: true },
       { id: 302, sku: 'AT-GAN-L-NAV', size: 'L', color: 'Xanh navy', colorHex: '#26344D', price: 249000, stockQty: 15, inStock: true },
@@ -310,7 +311,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
     basePrice: 535000, primaryImageUrl: img('skirt1'), categoryName: 'Chân váy', audience: 'WOMEN',
     description: 'Dài qua gối, ly giữ nếp sau nhiều lần giặt.',
     brand: 'Local Studio', material: 'Polyester 100%', sizeChartUrl: null,
-    images: [{ url: img('skirt1'), altText: null, isPrimary: true }],
+    images: [{ url: img('skirt1'), altText: null, isPrimary: true, color: null }],
     variants: [
       { id: 401, sku: 'CV-LY-S-CRM', size: 'S', color: 'Kem', colorHex: '#EDE3D2', price: 535000, stockQty: 6, inStock: true },
     ],
@@ -320,7 +321,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
     basePrice: 890000, primaryImageUrl: img('blazer1'), categoryName: 'Áo khoác', audience: 'WOMEN',
     description: 'Không lót, mặc được mùa nóng. Vai nhẹ, không độn dày.',
     brand: 'Local Studio', material: 'Linen 55% / Viscose 45%', sizeChartUrl: null,
-    images: [{ url: img('blazer1'), altText: null, isPrimary: true }],
+    images: [{ url: img('blazer1'), altText: null, isPrimary: true, color: null }],
     variants: [
       { id: 501, sku: 'BL-1L-M-GRY', size: 'M', color: 'Xám', colorHex: '#8A8A85', price: 890000, stockQty: 4, inStock: true },
     ],
@@ -330,7 +331,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
     basePrice: 720000, primaryImageUrl: img('dress1'), categoryName: 'Đầm', audience: 'WOMEN',
     description: 'Lụa nhân tạo mềm rủ, cổ vuông, tay ngắn.',
     brand: 'Local Studio', material: 'Viscose 100%', sizeChartUrl: null,
-    images: [{ url: img('dress1'), altText: null, isPrimary: true }],
+    images: [{ url: img('dress1'), altText: null, isPrimary: true, color: null }],
     variants: [
       { id: 601, sku: 'DM-LUA-S-RED', size: 'S', color: 'Đỏ đô', colorHex: '#6E2B2B', price: 720000, stockQty: 7, inStock: true },
     ],

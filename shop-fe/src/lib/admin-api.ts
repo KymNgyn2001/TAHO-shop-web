@@ -208,7 +208,7 @@ export const adminApi = {
       name: body.name,
       slug: slugify(body.name),
       basePrice: body.basePrice,
-      primaryImageUrl: body.imageUrls[0] ?? null,
+      primaryImageUrl: body.images[0]?.url ?? null,
       categoryName: category?.name ?? null,
       audience: body.audience ?? 'UNISEX',
       description: body.description ?? null,
