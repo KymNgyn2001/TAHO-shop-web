@@ -7,10 +7,12 @@ export function stripDiacritics(s: string): string {
   return s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, (m) => (m === 'Đ' ? 'D' : 'd'));
 }
 
+/**
+ * Bo dau truoc khi tach tu, vi khach hay go khong dau ("hoodie han quoc") —
+ * neu so khop nguyen dau thi se khong khop voi du lieu co dau trong DB ("Hàn Quốc").
+ */
 function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .normalize('NFC')
+  return stripDiacritics(text.toLowerCase())
     .split(/[^\p{L}0-9]+/u)
     .filter((w) => w.length >= 2);
 }
@@ -30,7 +32,8 @@ const STOPWORDS = new Set([
 ]);
 
 function contentWords(words: string[]): string[] {
-  const filtered = words.filter((w) => !STOPWORDS.has(stripDiacritics(w)));
+  // words da qua tokenize() nen da bo dau san.
+  const filtered = words.filter((w) => !STOPWORDS.has(w));
   return filtered.length > 0 ? filtered : words;
 }
 
