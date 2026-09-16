@@ -117,6 +117,9 @@
   outline: none; border-color: var(--ink);
 }
 .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+/* Nut "+Them" ben canh 1 input (khong phai 2 field ngang hang) khong nen bi keo dan
+   het chieu rong cot grid — de no co kich thuoc vua noi dung, dinh sang trai. */
+.field-row > button.chip { justify-self: start; white-space: nowrap; }
 
 .dropbox {
   border: 1px dashed var(--line); border-radius: 4px;
