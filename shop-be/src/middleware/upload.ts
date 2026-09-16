@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import multer from 'multer';
 import { env } from '../lib/env';
+import { getRequestBaseUrl } from '../lib/requestContext';
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
@@ -32,10 +33,14 @@ export const upload = multer({
 });
 
 /**
- * URL day du (vd http://192.168.1.93:8080/uploads/2026/09/abc.jpg) de FE hien thi
- * truc tiep bang <img>, khong phu thuoc FE dang chay o host/cong nao.
+ * URL day du de FE preview ngay sau khi upload — dung host cua chinh request hien tai
+ * (getRequestBaseUrl) nen luon dung du dang truy cap qua wifi/IP nao. Luu y: cho nay
+ * chi phuc vu preview tuc thoi, khi luu vao DB (products.routes.ts) URL se duoc rut
+ * gon lai thanh duong dan tuong doi qua toRelativePath() de khong bi "dinh cung" vao
+ * mang tai thoi diem upload.
  */
 export function publicUrlFor(filePath: string): string {
   const relative = `/${path.relative('.', filePath).split(path.sep).join('/')}`;
-  return `${env.publicBaseUrl}${relative}`;
+  const base = getRequestBaseUrl() ?? env.publicBaseUrl;
+  return `${base}${relative}`;
 }

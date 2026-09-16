@@ -3,7 +3,7 @@
 // Cung quy uoc voi src/lib/api-client.ts: NEXT_PUBLIC_USE_MOCK=true -> du lieu gia.
 // =====================================================================
 
-import { ApiException, getToken } from './api-client';
+import { ApiException, getToken, sessionId, BASE_URL } from './api-client';
 import type {
   UploadedImage,
   CategoryWithCount,
@@ -33,17 +33,6 @@ type ProductDetail = ProductCard & {
 };
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
-
-function sessionId(): string {
-  if (typeof window === 'undefined') return '';
-  let id = localStorage.getItem('sid');
-  if (!id) {
-    id = crypto.randomUUID();
-    localStorage.setItem('sid', id);
-  }
-  return id;
-}
 
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();

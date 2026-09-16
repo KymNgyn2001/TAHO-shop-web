@@ -5,6 +5,7 @@ import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
 import { toProductCard, toProductDetail } from '../lib/mappers';
+import { toRelativePath } from '../lib/url';
 import { uniqueSlug } from '../lib/slug';
 import { requireRole } from '../middleware/auth';
 
@@ -134,11 +135,11 @@ productsRouter.post(
         description: body.description,
         brand: body.brand,
         material: body.material,
-        sizeChartUrl: body.sizeChartImageUrl,
+        sizeChartUrl: body.sizeChartImageUrl ? toRelativePath(body.sizeChartImageUrl) : body.sizeChartImageUrl,
         audience: body.audience,
         images: {
           create: body.images.map((img, i) => ({
-            url: img.url,
+            url: toRelativePath(img.url),
             color: img.color,
             isPrimary: i === 0,
             sortOrder: i,
@@ -184,7 +185,7 @@ productsRouter.patch(
           description: body.description,
           brand: body.brand,
           material: body.material,
-          sizeChartUrl: body.sizeChartImageUrl,
+          sizeChartUrl: body.sizeChartImageUrl ? toRelativePath(body.sizeChartImageUrl) : body.sizeChartImageUrl,
           audience: body.audience,
         },
       });
@@ -194,7 +195,7 @@ productsRouter.patch(
       await tx.productImage.createMany({
         data: body.images.map((img, i) => ({
           productId: id,
-          url: img.url,
+          url: toRelativePath(img.url),
           color: img.color,
           isPrimary: i === 0,
           sortOrder: i,

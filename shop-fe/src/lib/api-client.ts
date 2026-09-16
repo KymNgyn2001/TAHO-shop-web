@@ -132,6 +132,9 @@ export type ChatContext = {
   productId?: number;
   lastCartItemId?: number;
   recommendedSize?: string;
+  pendingConfirm?:
+    | { kind: 'ADD_TO_CART'; variantId: number; quantity: number; productName: string; size: string; color: string }
+    | { kind: 'DELETE_PRODUCT'; productId: number; productName: string };
 };
 
 type ChatRequest = {
@@ -144,6 +147,7 @@ type ChatMessage = {
   products?: ProductCard[];
   order?: Order;
   cartUpdated?: boolean;
+  confirm?: boolean;
   context?: ChatContext;
 };
 

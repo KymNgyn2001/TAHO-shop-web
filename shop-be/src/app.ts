@@ -4,6 +4,7 @@ import path from 'path';
 import { env } from './lib/env';
 import { identify } from './middleware/auth';
 import { errorHandler, notFoundHandler } from './middleware/error';
+import { withRequestBaseUrl } from './lib/requestContext';
 
 import { authRouter } from './routes/auth.routes';
 import { categoriesRouter } from './routes/categories.routes';
@@ -21,14 +22,22 @@ import { chatRouter } from './routes/chat.routes';
 
 export const app = express();
 
+/** localhost hoac IP LAN rieng (192.168.x, 10.x, 172.16-31.x) bat ky port nao —
+ * tu dong cho phep du doi wifi/mang nao, khong can sua CORS_ORIGIN moi lan. */
+const PRIVATE_LAN_ORIGIN_RE =
+  /^https?:\/\/(localhost|127\.0\.0\.1|192\.168\.\d{1,3}\.\d{1,3}|10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3})(:\d+)?$/;
+
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || env.corsOrigins.includes(origin)) return callback(null, true);
+      if (!origin || env.corsOrigins.includes(origin) || PRIVATE_LAN_ORIGIN_RE.test(origin)) {
+        return callback(null, true);
+      }
       callback(new Error('CORS_NOT_ALLOWED'));
     },
   }),
 );
+app.use((req, _res, next) => withRequestBaseUrl(`${req.protocol}://${req.get('host')}`, next));
 app.use(express.json());
 app.use('/uploads', express.static(path.resolve(env.uploadDir)));
 app.use(identify);
