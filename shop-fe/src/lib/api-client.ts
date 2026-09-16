@@ -131,6 +131,7 @@ type Page<T> = {
 export type ChatContext = {
   productId?: number;
   lastCartItemId?: number;
+  recommendedSize?: string;
 };
 
 type ChatRequest = {
@@ -190,7 +191,22 @@ export type DiscountPreview = {
 };
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080';
+
+/**
+ * Neu khong khai bao NEXT_PUBLIC_API_URL, tu suy ra dia chi BE tu chinh dia chi
+ * dang mo trang (cung host, port 8080) — nho vay doi wifi (nha/truong) khong can
+ * sua .env, vi trinh duyet luon biet dang truy cap qua IP/host nao.
+ */
+function resolveBaseUrl(): string {
+  const configured = process.env.NEXT_PUBLIC_API_URL;
+  if (configured) return configured;
+  if (typeof window !== 'undefined') {
+    return `${window.location.protocol}//${window.location.hostname}:8080`;
+  }
+  return 'http://localhost:8080';
+}
+
+export const BASE_URL = resolveBaseUrl();
 
 // ---------------------------------------------------------------------
 // Ha tang
@@ -202,11 +218,31 @@ export class ApiException extends Error {
   }
 }
 
-function sessionId(): string {
+/**
+ * crypto.randomUUID() chi chay duoc trong "secure context" (HTTPS hoac localhost) —
+ * mo bang IP LAN thuong (http://192.168.x.x) se bi undefined va nem loi ngay, khien
+ * moi request (ke ca dang nhap) chet truoc khi kip goi fetch. Dung getRandomValues
+ * (khong bi han che nay) de tu ghep UUID khi randomUUID khong co san.
+ */
+export function genUuid(): string {
+  if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+export function sessionId(): string {
   if (typeof window === 'undefined') return '';
   let id = localStorage.getItem('sid');
   if (!id) {
-    id = crypto.randomUUID();
+    id = genUuid();
     localStorage.setItem('sid', id);
   }
   return id;

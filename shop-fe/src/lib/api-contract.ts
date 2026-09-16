@@ -159,6 +159,8 @@ export interface ChatContext {
   productId?: number;
   /** Muc gio hang bot vua them — de xu ly "huỷ"/"khỏi lấy" ngay sau do. */
   lastCartItemId?: number;
+  /** Size bot vua tu van (tu chieu cao/can nang) — dung lai neu khach "lấy" ma khong lap lai size. */
+  recommendedSize?: string;
 }
 
 export interface ChatMessage {

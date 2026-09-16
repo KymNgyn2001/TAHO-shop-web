@@ -6,6 +6,7 @@ import { toOrder, toProductCard } from '../lib/mappers';
 import { isGreetingOrTooShort, scoreText, stripDiacritics } from '../lib/search';
 import { addItemToCart, resolveCart } from '../lib/cart';
 import { ApiError } from '../lib/apiError';
+import { parseHeightCm, parseWeightKg, recommendSize, nearestAvailableSize } from '../lib/sizeAdvice';
 
 export const chatRouter = Router();
 
@@ -37,6 +38,7 @@ const contextSchema = z
   .object({
     productId: z.number().int().positive().optional(),
     lastCartItemId: z.number().int().positive().optional(),
+    recommendedSize: z.string().optional(),
   })
   .optional();
 
@@ -119,9 +121,15 @@ chatRouter.post(
       });
 
       if (product) {
-        const sizeToken = [...new Set(product.variants.map((v) => v.size))].find((size) =>
-          findWholeWord(lower, size),
-        );
+        const availableSizes = [...new Set(product.variants.map((v) => v.size))];
+        const explicitSizeToken = availableSizes.find((size) => findWholeWord(lower, size));
+        // Khong noi size trong cau nhung truoc do bot da tu van (VD "1m72 83kg mac size gi") —
+        // dung luon size da goi y thay vi bat khach lap lai.
+        const sizeToken =
+          explicitSizeToken ??
+          (context.recommendedSize && availableSizes.includes(context.recommendedSize)
+            ? context.recommendedSize
+            : undefined);
 
         if (sizeToken) {
           const colorToken = [...new Set(product.variants.map((v) => v.color))].find((color) =>
@@ -178,12 +186,45 @@ chatRouter.post(
       });
     }
 
-    // ---------- 5. Hoi tu van size chung chung ----------
-    if (lower.includes('size')) {
+    // ---------- 5. Tu van size theo chieu cao/can nang ----------
+    const heightCm = parseHeightCm(lower);
+    const weightKg = parseWeightKg(lower);
+    if (lower.includes('size') || heightCm != null || weightKg != null) {
+      if (heightCm == null && weightKg == null) {
+        return res.json({
+          role: 'assistant',
+          content: 'Bạn cho mình biết chiều cao/cân nặng để tư vấn size chính xác hơn nhé. Thông thường 1m60-1m68, 50-58kg hợp size M.',
+          context,
+        });
+      }
+
+      let estimated = recommendSize(heightCm, weightKg);
+      let productNote = '';
+
+      if (context.productId && estimated) {
+        const product = await prisma.product.findUnique({
+          where: { id: context.productId },
+          include: { variants: true },
+        });
+        if (product) {
+          const availableSizes = [...new Set(product.variants.map((v) => v.size))];
+          const adjusted = nearestAvailableSize(estimated, availableSizes);
+          if (adjusted) {
+            if (adjusted !== estimated) productNote = ` ("${product.name}" hiện chỉ có tới size ${adjusted})`;
+            estimated = adjusted;
+          }
+        }
+      }
+
+      const missingHint =
+        heightCm == null ? ' Cho mình thêm chiều cao thì tư vấn chuẩn hơn nhé.'
+        : weightKg == null ? ' Cho mình thêm cân nặng thì tư vấn chuẩn hơn nhé.'
+        : '';
+
       return res.json({
         role: 'assistant',
-        content: 'Bạn cho mình biết chiều cao/cân nặng để tư vấn size chính xác hơn nhé. Thông thường 1m60-1m68, 50-58kg hợp size M.',
-        context,
+        content: `Theo số đo bạn đưa, mình nghĩ bạn hợp size ${estimated}${productNote} (đây là ước lượng chung, có thể lệch đôi chút tuỳ form áo).${missingHint} Ưng size này thì cứ nhắn "lấy" kèm màu/số lượng là mình lên đơn liền.`,
+        context: { ...context, recommendedSize: estimated ?? undefined },
       });
     }
 
