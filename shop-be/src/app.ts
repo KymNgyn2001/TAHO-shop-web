@@ -22,6 +22,12 @@ import { chatRouter } from './routes/chat.routes';
 
 export const app = express();
 
+/** Can thiet khi deploy sau reverse proxy (Railway/Render/Vercel...): proxy nhan HTTPS
+ * roi forward vao container qua HTTP, tin "X-Forwarded-Proto" thi req.protocol moi
+ * tra ve dung "https" — neu khong, link anh tu dong sinh ra (requestContext.ts) se
+ * bi sai thanh http:// va bi trinh duyet chan (mixed content) tren trang https. */
+app.set('trust proxy', 1);
+
 /** localhost hoac IP LAN rieng (192.168.x, 10.x, 172.16-31.x) bat ky port nao —
  * tu dong cho phep du doi wifi/mang nao, khong can sua CORS_ORIGIN moi lan. */
 const PRIVATE_LAN_ORIGIN_RE =
