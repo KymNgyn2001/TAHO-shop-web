@@ -47,6 +47,20 @@ function matchesAnyWord(flat: string, words: string[]): boolean {
   return words.some((w) => (w.includes(' ') ? flat.includes(w) : findWholeWord(flat, w)));
 }
 
+/**
+ * Bo cac tu "lenh mua" (dong tu mua, size, so luong, tu "mau") khoi cau truoc khi
+ * so khop ten san pham — khong thi 1 cau vua neu y dinh mua vua neu ten san pham
+ * (vd "lay 2 cai ao thun mau trang size M") se bi loang diem vi qua nhieu tu thua.
+ */
+function stripBuyNoise(flat: string): string {
+  let s = flat;
+  for (const w of BUY_VERBS) s = s.replace(new RegExp(`\\b${escapeRegExp(w)}\\b`, 'gi'), ' ');
+  s = s.replace(/\bsize\s*\w+\b/gi, ' ');
+  s = s.replace(/\d+\s*(cai|chiec|c)\b/gi, ' ');
+  s = s.replace(/\bmau\b/gi, ' ');
+  return s;
+}
+
 function isStaff(role: string | undefined): boolean {
   return role === 'EMPLOYEE' || role === 'MANAGER';
 }
@@ -277,12 +291,38 @@ chatRouter.post(
       });
     }
 
-    // ---------- 5. Y dinh mua hang (can biet dang noi ve san pham nao) ----------
-    if (context.productId && hasAnyFlat(flat, BUY_VERBS)) {
-      const product = await prisma.product.findUnique({
-        where: { id: context.productId },
-        include: { variants: true },
-      });
+    // ---------- 5. Y dinh mua hang ----------
+    if (hasAnyFlat(flat, BUY_VERBS)) {
+      let productId = context.productId;
+
+      // Chua co san pham dang noi (VD day la tin nhan dau tien) nhung cau da neu
+      // luon ten san pham lan y dinh mua ("lấy 2 cái áo thun màu trắng size M") —
+      // thu tim san pham ngay trong cau nay truoc khi hoi lai chung chung.
+      if (!productId) {
+        const candidates = await prisma.product.findMany({ include: productInclude });
+        const searchRanked = candidates
+          .map((p) => ({
+            product: p,
+            score: scoreText(stripBuyNoise(flat), [p.name, p.category?.name].filter(Boolean).join(' ')),
+          }))
+          .filter((r) => r.score >= MIN_MATCH_SCORE)
+          .sort((a, b) => b.score - a.score);
+
+        if (searchRanked.length === 1 || (searchRanked.length > 1 && searchRanked[0].score - searchRanked[1].score >= 0.15)) {
+          productId = searchRanked[0].product.id;
+        } else if (searchRanked.length > 1) {
+          return res.json({
+            role: 'assistant',
+            content: 'Bạn muốn lấy mẫu nào trong số này?',
+            products: searchRanked.slice(0, 3).map((r) => toProductCard(r.product)),
+            context: { productId: searchRanked[0].product.id },
+          });
+        }
+      }
+
+      const product = productId
+        ? await prisma.product.findUnique({ where: { id: productId }, include: { variants: true } })
+        : null;
 
       if (product) {
         // Khach nhac ten 1 danh muc KHAC voi san pham dang noi -> dang hoi mon khac,
