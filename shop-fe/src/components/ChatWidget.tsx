@@ -14,6 +14,7 @@ type Msg = {
   products?: ProductCard[];
   order?: Order;
   cartUpdated?: boolean;
+  confirm?: boolean;
 };
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
@@ -36,12 +37,12 @@ export default function ChatWidget() {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(override?: string) {
+    const text = (override ?? input).trim();
     if (!text || busy) return;
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
     setMessages((prev) => [...prev, { role: 'user', content: text }]);
-    setInput('');
+    if (!override) setInput('');
     setBusy(true);
     try {
       const reply = await api.chat({ message: text, history, context });
@@ -94,6 +95,16 @@ export default function ChatWidget() {
                     Xem giỏ hàng →
                   </Link>
                 )}
+                {m.confirm && i === messages.length - 1 && (
+                  <div className="chatw__confirm">
+                    <button type="button" className="chatw__confirm-yes" disabled={busy} onClick={() => send('Đồng ý')}>
+                      Đồng ý
+                    </button>
+                    <button type="button" className="chatw__confirm-no" disabled={busy} onClick={() => send('Không')}>
+                      Không
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
             {busy && <div className="chatw__msg chatw__msg--assistant"><p>Đang gõ…</p></div>}
@@ -109,7 +120,7 @@ export default function ChatWidget() {
               disabled={busy}
               aria-label="Nhập tin nhắn"
             />
-            <button type="button" className="icon-btn" onClick={send} disabled={busy || !input.trim()} aria-label="Gửi">
+            <button type="button" className="icon-btn" onClick={() => send()} disabled={busy || !input.trim()} aria-label="Gửi">
               <Send size={18} strokeWidth={1.5} />
             </button>
           </div>

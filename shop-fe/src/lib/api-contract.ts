@@ -161,6 +161,10 @@ export interface ChatContext {
   lastCartItemId?: number;
   /** Size bot vua tu van (tu chieu cao/can nang) — dung lai neu khach "lấy" ma khong lap lai size. */
   recommendedSize?: string;
+  /** Hanh dong dang cho khach xac nhan dong y/tu choi (them gio hang, xoa san pham...). */
+  pendingConfirm?:
+    | { kind: 'ADD_TO_CART'; variantId: number; quantity: number; productName: string; size: string; color: string }
+    | { kind: 'DELETE_PRODUCT'; productId: number; productName: string };
 }
 
 export interface ChatMessage {
@@ -172,6 +176,8 @@ export interface ChatMessage {
   order?: Order;
   /** true neu bot vua them/xoa gio hang -> FE nen goi lai GET /cart de cap nhat badge. */
   cartUpdated?: boolean;
+  /** true -> FE hien 2 nut "Đồng ý"/"Không" thay vi o nhap thuong. */
+  confirm?: boolean;
   /** FE luu lai va gui kem o luot chat tiep theo, khong tu suy doan. */
   context?: ChatContext;
 }

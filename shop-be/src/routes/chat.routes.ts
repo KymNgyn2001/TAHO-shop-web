@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { toOrder, toProductCard } from '../lib/mappers';
@@ -7,6 +8,7 @@ import { isGreetingOrTooShort, scoreText, stripDiacritics } from '../lib/search'
 import { addItemToCart, resolveCart } from '../lib/cart';
 import { ApiError } from '../lib/apiError';
 import { parseHeightCm, parseWeightKg, recommendSize, nearestAvailableSize } from '../lib/sizeAdvice';
+import { computeMonthlyStats } from '../lib/monthlyStats';
 
 export const chatRouter = Router();
 
@@ -17,9 +19,15 @@ const ORDER_CODE_RE = /ORD-\d{8}-\d{4}/i;
 
 /** Chi coi la ket qua "trung" khi it nhat mot nua so tu trong cau nguoi dung xuat hien o san pham. */
 const MIN_MATCH_SCORE = 0.5;
+/** Nguong cao hon danh cho xoa san pham — tranh xoa nham vi khop mo ho. */
+const DELETE_MATCH_SCORE = 0.6;
 
 const BUY_VERBS = ['lay', 'mua', 'dat', 'order', 'chot', 'chot don', 'cho minh', 'cho toi'];
 const CANCEL_WORDS = ['khoi', 'thoi khoi', 'bo di', 'huy', 'khong lay', 'doi y', 'thoi', 'bo'];
+const YES_WORDS = ['dong y', 'xac nhan', 'ok', 'oke', 'okie', 'duoc', 'chot', 'u', 'um', 'co'];
+const NO_WORDS = ['khong dong y', 'khong', 'huy', 'thoi', 'k'];
+const DELETE_TRIGGER = ['xoa san pham', 'xoa'];
+const REPORT_TRIGGER = ['bao cao', 'doanh thu', 'tong ket', 'thong ke'];
 
 function hasAnyFlat(flat: string, words: string[]): boolean {
   return words.some((w) => flat.includes(w));
@@ -34,11 +42,37 @@ function findWholeWord(haystackLower: string, token: string): boolean {
   return re.test(haystackLower);
 }
 
+/** Tu don le dung whole-word (tranh "k" khop vao giua tu khac), cum nhieu tu dung substring. */
+function matchesAnyWord(flat: string, words: string[]): boolean {
+  return words.some((w) => (w.includes(' ') ? flat.includes(w) : findWholeWord(flat, w)));
+}
+
+function isStaff(role: string | undefined): boolean {
+  return role === 'EMPLOYEE' || role === 'MANAGER';
+}
+
+const pendingConfirmSchema = z.union([
+  z.object({
+    kind: z.literal('ADD_TO_CART'),
+    variantId: z.number().int().positive(),
+    quantity: z.number().int().positive(),
+    productName: z.string(),
+    size: z.string(),
+    color: z.string(),
+  }),
+  z.object({
+    kind: z.literal('DELETE_PRODUCT'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+  }),
+]);
+
 const contextSchema = z
   .object({
     productId: z.number().int().positive().optional(),
     lastCartItemId: z.number().int().positive().optional(),
     recommendedSize: z.string().optional(),
+    pendingConfirm: pendingConfirmSchema.optional(),
   })
   .optional();
 
@@ -55,10 +89,76 @@ chatRouter.post(
     const message = body.message.trim();
     const lower = message.toLowerCase();
     const flat = stripDiacritics(lower);
-    const context = body.context ?? {};
+    let context = body.context ?? {};
 
     const orderCodeMatch = ORDER_CODE_RE.exec(message);
     const wantsCancelWord = hasAnyFlat(flat, ['huy']);
+
+    // ---------- 0. Tra loi cau hoi xac nhan (dong y / khong) vua hoi luot truoc ----------
+    if (context.pendingConfirm) {
+      const pending = context.pendingConfirm;
+      const isYes = matchesAnyWord(flat, YES_WORDS);
+      const isNo = matchesAnyWord(flat, NO_WORDS);
+
+      if (isYes || isNo) {
+        const { pendingConfirm: _drop, ...restContext } = context;
+
+        if (!isYes) {
+          return res.json({
+            role: 'assistant',
+            content: pending.kind === 'ADD_TO_CART' ? 'Đã huỷ, mình không thêm vào giỏ hàng nhé.' : 'Đã huỷ, mình không xoá sản phẩm đó.',
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'ADD_TO_CART') {
+          try {
+            const cart = await resolveCart(req);
+            const item = await addItemToCart(cart.id, pending.variantId, pending.quantity);
+            return res.json({
+              role: 'assistant',
+              content: `Mình đã thêm ${pending.quantity} "${pending.productName}" — màu ${pending.color}, size ${pending.size} vào giỏ hàng cho bạn. Vào giỏ hàng để thanh toán nhé! Đổi ý thì cứ nhắn "huỷ" giúp mình.`,
+              cartUpdated: true,
+              context: { ...restContext, lastCartItemId: item.id },
+            });
+          } catch (e) {
+            if (e instanceof ApiError) {
+              return res.json({ role: 'assistant', content: e.message, context: restContext });
+            }
+            throw e;
+          }
+        }
+
+        if (pending.kind === 'DELETE_PRODUCT' && isStaff(req.userRole)) {
+          try {
+            await prisma.product.delete({ where: { id: pending.productId } });
+            return res.json({
+              role: 'assistant',
+              content: `Mình đã xoá sản phẩm "${pending.productName}" khỏi hệ thống.`,
+              context: restContext,
+            });
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : '';
+            const isFk =
+              (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') ||
+              msg.includes('foreign key constraint');
+            return res.json({
+              role: 'assistant',
+              content: isFk
+                ? `"${pending.productName}" đã có trong đơn hàng nên không xoá được, bạn ẩn/ngừng bán thay vì xoá nhé.`
+                : `Có lỗi khi xoá "${pending.productName}", bạn thử lại giúp mình.`,
+              context: restContext,
+            });
+          }
+        }
+
+        return res.json({ role: 'assistant', content: 'Mình chưa xử lý được yêu cầu này.', context: restContext });
+      }
+
+      // Khach noi sang chuyen khac -> bo qua cau hoi xac nhan cu, xu ly binh thuong.
+      const { pendingConfirm: _drop, ...restContext } = context;
+      context = restContext;
+    }
 
     // ---------- 1. Tra cuu / huy don qua MA DON ----------
     if (orderCodeMatch) {
@@ -113,7 +213,71 @@ chatRouter.post(
       });
     }
 
-    // ---------- 3. Y dinh mua hang (can biet dang noi ve san pham nao) ----------
+    // ---------- 3. Bao cao thang (chi MANAGER) ----------
+    if (req.userRole === 'MANAGER' && hasAnyFlat(flat, REPORT_TRIGGER)) {
+      const now = new Date();
+      const isPrevMonth = hasAnyFlat(flat, ['thang truoc']);
+      const target = new Date(now.getFullYear(), now.getMonth() - (isPrevMonth ? 1 : 0), 1);
+      const month = `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}`;
+      const stats = await computeMonthlyStats(month);
+
+      const top3 = stats.topProducts
+        .slice(0, 3)
+        .map((p, i) => `${i + 1}. ${p.productName} — ${p.quantitySold} sp, ${p.revenue.toLocaleString('vi-VN')}đ`)
+        .join('\n');
+      const changeText =
+        stats.revenueChangePct == null
+          ? ''
+          : ` (${stats.revenueChangePct >= 0 ? '+' : ''}${stats.revenueChangePct}% so với tháng trước)`;
+
+      return res.json({
+        role: 'assistant',
+        content:
+          `Báo cáo tháng ${month}:\n` +
+          `- Doanh thu: ${stats.totalRevenue.toLocaleString('vi-VN')}đ${changeText}\n` +
+          `- Đơn hàng: ${stats.totalOrders} (huỷ: ${stats.cancelledOrders})\n` +
+          `- Giá trị đơn TB: ${stats.avgOrderValue.toLocaleString('vi-VN')}đ\n` +
+          (top3 ? `- Bán chạy nhất:\n${top3}` : '- Chưa có sản phẩm nào bán ra tháng này.'),
+        context,
+      });
+    }
+
+    // ---------- 4. Xoa san pham (chi EMPLOYEE/MANAGER) ----------
+    if (isStaff(req.userRole) && hasAnyFlat(flat, DELETE_TRIGGER)) {
+      // Bo cum lenh ("xoa san pham"/"xoa") truoc khi so khop ten, khong thi diem bi loang.
+      const nameOnly = DELETE_TRIGGER.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), lower);
+      const products = await prisma.product.findMany({ include: productInclude });
+      const ranked = products
+        .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
+        .filter((r) => r.score >= DELETE_MATCH_SCORE)
+        .sort((a, b) => b.score - a.score);
+
+      if (ranked.length === 0) {
+        return res.json({
+          role: 'assistant',
+          content: 'Mình chưa xác định được sản phẩm nào để xoá, bạn nói rõ tên sản phẩm giúp mình nhé.',
+          context,
+        });
+      }
+      if (ranked.length > 1 && ranked[0].score - ranked[1].score < 0.15) {
+        return res.json({
+          role: 'assistant',
+          content: 'Có vài sản phẩm trùng tên, bạn chọn đúng mẫu giúp mình:',
+          products: ranked.slice(0, 3).map((r) => toProductCard(r.product)),
+          context,
+        });
+      }
+
+      const target = ranked[0].product;
+      return res.json({
+        role: 'assistant',
+        content: `Xác nhận xoá sản phẩm "${target.name}" khỏi hệ thống? Không thể hoàn tác.`,
+        confirm: true,
+        context: { ...context, pendingConfirm: { kind: 'DELETE_PRODUCT', productId: target.id, productName: target.name } },
+      });
+    }
+
+    // ---------- 5. Y dinh mua hang (can biet dang noi ve san pham nao) ----------
     if (context.productId && hasAnyFlat(flat, BUY_VERBS)) {
       const product = await prisma.product.findUnique({
         where: { id: context.productId },
@@ -121,63 +285,73 @@ chatRouter.post(
       });
 
       if (product) {
-        const availableSizes = [...new Set(product.variants.map((v) => v.size))];
-        const explicitSizeToken = availableSizes.find((size) => findWholeWord(lower, size));
-        // Khong noi size trong cau nhung truoc do bot da tu van (VD "1m72 83kg mac size gi") —
-        // dung luon size da goi y thay vi bat khach lap lai.
-        const sizeToken =
-          explicitSizeToken ??
-          (context.recommendedSize && availableSizes.includes(context.recommendedSize)
-            ? context.recommendedSize
-            : undefined);
+        // Khach nhac ten 1 danh muc KHAC voi san pham dang noi -> dang hoi mon khac,
+        // khong phai tiep tuc mua mon cu (vd dang xem Hoodie ma noi "mua áo thun").
+        const categories = await prisma.category.findMany();
+        const mentionedOtherCategory = categories.find(
+          (c) => c.id !== product.categoryId && findWholeWord(flat, stripDiacritics(c.name.toLowerCase())),
+        );
 
-        if (sizeToken) {
-          const colorToken = [...new Set(product.variants.map((v) => v.color))].find((color) =>
-            flat.includes(stripDiacritics(color.toLowerCase())),
-          );
-          const candidates = product.variants.filter(
-            (v) => v.size === sizeToken && (!colorToken || v.color.toLowerCase() === colorToken.toLowerCase()),
-          );
-          const variant = candidates[0] ?? product.variants.find((v) => v.size === sizeToken) ?? null;
+        if (!mentionedOtherCategory) {
+          const availableSizes = [...new Set(product.variants.map((v) => v.size))];
+          const explicitSizeToken = availableSizes.find((size) => findWholeWord(lower, size));
+          // Khong noi size trong cau nhung truoc do bot da tu van (VD "1m72 83kg mac size gi") —
+          // dung luon size da goi y thay vi bat khach lap lai.
+          const sizeToken =
+            explicitSizeToken ??
+            (context.recommendedSize && availableSizes.includes(context.recommendedSize)
+              ? context.recommendedSize
+              : undefined);
 
-          const qtyMatch = message.match(/(\d+)\s*(cái|chiếc|c\b)?/i);
-          const quantity = qtyMatch ? Math.max(1, parseInt(qtyMatch[1], 10)) : 1;
+          if (sizeToken) {
+            const colorToken = [...new Set(product.variants.map((v) => v.color))].find((color) =>
+              flat.includes(stripDiacritics(color.toLowerCase())),
+            );
+            const candidates = product.variants.filter(
+              (v) => v.size === sizeToken && (!colorToken || v.color.toLowerCase() === colorToken.toLowerCase()),
+            );
+            const variant = candidates[0] ?? product.variants.find((v) => v.size === sizeToken) ?? null;
 
-          if (!variant) {
-            return res.json({
-              role: 'assistant',
-              content: `Mình chưa thấy size ${sizeToken} cho "${product.name}", bạn xem lại giúp mình nhé.`,
-              context,
-            });
-          }
-          if (variant.stockQty < quantity) {
-            return res.json({
-              role: 'assistant',
-              content: `Size ${variant.size}${variant.color ? ` màu ${variant.color}` : ''} chỉ còn ${variant.stockQty} sản phẩm thôi, bạn lấy ít hơn nhé.`,
-              context,
-            });
-          }
+            const qtyMatch = message.match(/(\d+)\s*(cái|chiếc|c\b)?/i);
+            const quantity = qtyMatch ? Math.max(1, parseInt(qtyMatch[1], 10)) : 1;
 
-          try {
-            const cart = await resolveCart(req);
-            const item = await addItemToCart(cart.id, variant.id, quantity);
-            return res.json({
-              role: 'assistant',
-              content: `Mình đã thêm ${quantity} "${product.name}" — màu ${variant.color}, size ${variant.size} vào giỏ hàng cho bạn. Vào giỏ hàng để thanh toán nhé! Đổi ý thì cứ nhắn "huỷ" giúp mình.`,
-              cartUpdated: true,
-              context: { productId: product.id, lastCartItemId: item.id },
-            });
-          } catch (e) {
-            if (e instanceof ApiError) {
-              return res.json({ role: 'assistant', content: e.message, context });
+            if (!variant) {
+              return res.json({
+                role: 'assistant',
+                content: `Mình chưa thấy size ${sizeToken} cho "${product.name}", bạn xem lại giúp mình nhé.`,
+                context,
+              });
             }
-            throw e;
+            if (variant.stockQty < quantity) {
+              return res.json({
+                role: 'assistant',
+                content: `Size ${variant.size}${variant.color ? ` màu ${variant.color}` : ''} chỉ còn ${variant.stockQty} sản phẩm thôi, bạn lấy ít hơn nhé.`,
+                context,
+              });
+            }
+
+            return res.json({
+              role: 'assistant',
+              content: `Xác nhận thêm ${quantity} "${product.name}" — màu ${variant.color}, size ${variant.size} vào giỏ hàng nhé?`,
+              confirm: true,
+              context: {
+                ...context,
+                pendingConfirm: {
+                  kind: 'ADD_TO_CART',
+                  variantId: variant.id,
+                  quantity,
+                  productName: product.name,
+                  size: variant.size,
+                  color: variant.color,
+                },
+              },
+            });
           }
         }
       }
     }
 
-    // ---------- 4. Muon huy nhung khong co ma don / khong ro muc nao ----------
+    // ---------- 6. Muon huy nhung khong co ma don / khong ro muc nao ----------
     if (wantsCancelWord) {
       return res.json({
         role: 'assistant',
@@ -186,7 +360,7 @@ chatRouter.post(
       });
     }
 
-    // ---------- 5. Tu van size theo chieu cao/can nang ----------
+    // ---------- 7. Tu van size theo chieu cao/can nang ----------
     const heightCm = parseHeightCm(lower);
     const weightKg = parseWeightKg(lower);
     if (lower.includes('size') || heightCm != null || weightKg != null) {
@@ -228,7 +402,7 @@ chatRouter.post(
       });
     }
 
-    // ---------- 6. Loi chao / cau qua ngan ----------
+    // ---------- 8. Loi chao / cau qua ngan ----------
     if (isGreetingOrTooShort(message)) {
       return res.json({
         role: 'assistant',
@@ -237,7 +411,7 @@ chatRouter.post(
       });
     }
 
-    // ---------- 7. Tim san pham theo mo ta ----------
+    // ---------- 9. Tim san pham theo mo ta ----------
     const products = await prisma.product.findMany({ include: productInclude });
     const ranked = products
       .map((p) => ({
