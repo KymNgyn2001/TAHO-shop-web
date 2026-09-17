@@ -21,6 +21,8 @@ export default function SiteHeader() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchValue, setSearchValue] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
 
   useEffect(() => {
@@ -34,6 +36,13 @@ export default function SiteHeader() {
     await logout();
     router.push('/');
     router.refresh();
+  }
+
+  function submitSearch() {
+    const q = searchValue.trim();
+    if (!q) return;
+    router.push(`/?q=${encodeURIComponent(q)}`);
+    setSearchOpen(false);
   }
 
   return (
@@ -81,9 +90,33 @@ export default function SiteHeader() {
         </nav>
 
         <div className="header-actions">
-          <Link href="/" className="icon-btn" aria-label="Tìm sản phẩm">
-            <Search size={19} strokeWidth={1.5} />
-          </Link>
+          <div className="header-nav__item">
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={() => setSearchOpen((v) => !v)}
+              aria-expanded={searchOpen}
+              aria-label="Tìm sản phẩm"
+            >
+              <Search size={19} strokeWidth={1.5} />
+            </button>
+            {searchOpen && (
+              <>
+                <button type="button" className="user-menu__scrim" aria-label="Đóng tìm kiếm" onClick={() => setSearchOpen(false)} />
+                <div className="header-search__dropdown">
+                  <Search size={16} strokeWidth={1.5} aria-hidden />
+                  <input
+                    autoFocus
+                    value={searchValue}
+                    onChange={(e) => setSearchValue(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && submitSearch()}
+                    placeholder="Tìm sản phẩm…"
+                    aria-label="Tìm sản phẩm"
+                  />
+                </div>
+              </>
+            )}
+          </div>
 
           <Link href="/cart" className="cart-link" aria-label="Giỏ hàng">
             <ShoppingBag size={20} strokeWidth={1.5} />

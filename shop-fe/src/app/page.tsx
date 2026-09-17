@@ -2,8 +2,7 @@
 'use client';
 
 import { Suspense, useEffect, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { api, ApiException, type Category } from '@/lib/api-client';
 import type { ProductCard, Audience } from '@/lib/api-contract';
 import ProductGrid from '@/components/ProductGrid';
@@ -42,18 +41,36 @@ export default function HomePage() {
 
 function HomeContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number | ''>('');
   const [audience, setAudience] = useState<Audience | ''>('');
-  const [query, setQuery] = useState('');
   const [mode, setMode] = useState<Mode>({ kind: 'browse' });
+  const [searchResults, setSearchResults] = useState<ProductCard[]>([]);
 
-  // Header (SiteHeader) dieu huong toi day bang ?categoryId= hoac ?audience= —
-  // doc lai moi khi URL doi de link tren header thuc su loc duoc san pham.
+  // Header (SiteHeader) dieu huong toi day bang ?categoryId=, ?audience= hoac ?q= —
+  // doc lai moi khi URL doi de link/o tim kiem tren header thuc su loc duoc san pham.
   useEffect(() => {
-    function syncFromUrl() {
+    async function syncFromUrl() {
       const catParam = searchParams.get('categoryId');
       const audParam = searchParams.get('audience') as Audience | null;
+      const qParam = searchParams.get('q');
+
+      if (qParam) {
+        setMode({ kind: 'text', query: qParam });
+        setLoading(true);
+        setError(null);
+        try {
+          setSearchResults(await api.semanticSearch(qParam));
+        } catch (e) {
+          setError(e instanceof ApiException ? e.message : 'Có lỗi xảy ra. Thử lại nhé.');
+          setSearchResults([]);
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       setMode({ kind: 'browse' });
       if (catParam) {
         setCategoryId(Number(catParam));
@@ -74,7 +91,6 @@ function HomeContent() {
     MEN: [], WOMEN: [], KIDS: [], UNISEX: [],
   });
   const [accessories, setAccessories] = useState<ProductCard[]>([]);
-  const [searchResults, setSearchResults] = useState<ProductCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,60 +132,14 @@ function HomeContent() {
     if (categories.length > 0) load();
   }, [categories]);
 
-  async function runSearch() {
-    const q = query.trim();
-    if (!q) return;
-    setMode({ kind: 'text', query: q });
-    setLoading(true);
-    setError(null);
-    try {
-      setSearchResults(await api.semanticSearch(q));
-    } catch (e) {
-      setError(e instanceof ApiException ? e.message : 'Có lỗi xảy ra. Thử lại nhé.');
-      setSearchResults([]);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   function backToBrowse() {
-    setMode({ kind: 'browse' });
-    setQuery('');
+    router.push('/');
   }
 
   const showCurated = mode.kind === 'browse' && categoryId === '' && audience === '';
 
   return (
     <div className="wrap">
-      <div className="home-toolbar">
-        <select
-          className="home-toolbar__select"
-          value={categoryId}
-          onChange={(e) => {
-            setMode({ kind: 'browse' });
-            setCategoryId(e.target.value ? Number(e.target.value) : '');
-            setAudience('');
-          }}
-          aria-label="Lọc theo danh mục"
-        >
-          <option value="">Tất cả danh mục</option>
-          {categories.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-
-        <div className="home-toolbar__search">
-          <Search size={16} strokeWidth={1.5} aria-hidden />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && runSearch()}
-            placeholder="Tìm sản phẩm…"
-            aria-label="Tìm sản phẩm"
-          />
-        </div>
-      </div>
-
       {error && <p className="error-bar">{error}</p>}
 
       {mode.kind === 'text' ? (
