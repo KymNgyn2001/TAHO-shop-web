@@ -7,13 +7,15 @@ import { useRouter } from 'next/navigation';
 import { ShoppingBag, ChevronDown, Search, User } from 'lucide-react';
 import { useAuth, roleLabel } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
-import { api, type Category } from '@/lib/api-client';
+import { api, type Category, type CategoryGroup } from '@/lib/api-client';
 
 const AUDIENCE_LINKS = [
   { audience: 'MEN', label: 'Nam' },
   { audience: 'WOMEN', label: 'Nữ' },
-  { audience: 'KIDS', label: 'Trẻ em' },
 ] as const;
+
+/** Phu kien co link rieng ngoai dropdown nen khong lap lai trong nay. */
+const MENU_GROUP_ORDER: CategoryGroup[] = ['Áo', 'Quần', 'Váy & Đầm'];
 
 export default function SiteHeader() {
   const { user, loading, logout } = useAuth();
@@ -29,7 +31,11 @@ export default function SiteHeader() {
     api.categories().then(setCategories).catch(() => {});
   }, []);
 
-  const accessoryCat = categories.find((c) => c.name.toLowerCase() === 'phụ kiện');
+  const accessoryCat = categories.find((c) => c.group === 'Phụ kiện');
+  const groupedCategories = MENU_GROUP_ORDER
+    .map((g) => ({ group: g, items: categories.filter((c) => c.group === g) }))
+    .filter((g) => g.items.length > 0);
+  const ungroupedCategories = categories.filter((c) => !c.group);
 
   async function handleLogout() {
     setMenuOpen(false);
@@ -63,12 +69,27 @@ export default function SiteHeader() {
             {catMenuOpen && (
               <>
                 <button type="button" className="user-menu__scrim" aria-label="Đóng menu" onClick={() => setCatMenuOpen(false)} />
-                <div className="header-nav__dropdown">
-                  {categories.map((c) => (
-                    <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
-                      {c.name}
-                    </Link>
+                <div className="header-nav__dropdown header-nav__dropdown--grouped">
+                  {groupedCategories.map(({ group, items }) => (
+                    <div key={group} className="header-nav__group">
+                      <span className="header-nav__group-label">{group}</span>
+                      {items.map((c) => (
+                        <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
+                          {c.name}
+                        </Link>
+                      ))}
+                    </div>
                   ))}
+                  {ungroupedCategories.length > 0 && (
+                    <div className="header-nav__group">
+                      <span className="header-nav__group-label">Khác</span>
+                      {ungroupedCategories.map((c) => (
+                        <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
+                          {c.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </>
             )}

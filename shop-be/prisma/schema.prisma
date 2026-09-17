@@ -65,6 +65,9 @@ model Category {
   id        Int       @id @default(autoincrement())
   name      String    @unique
   slug      String    @unique
+  /** Nhom hien thi tren menu (VD "Ao", "Quan", "Vay & Dam", "Phu kien") —
+   * null = chua xep nhom, hien o muc "Khac" trong dropdown. */
+  group     String?
   createdAt DateTime  @default(now())
   products  Product[]
 }

@@ -16,6 +16,7 @@ import type {
   CreateEmployeeResponse,
   ReviewForAdmin,
 } from './api-contract-admin';
+import type { CategoryGroup } from './api-contract';
 
 type Page<T> = {
   items: T[];
@@ -67,9 +68,9 @@ const delay = (ms = 350) => new Promise((r) => setTimeout(r, ms));
 // ---------------------------------------------------------------------
 
 let mockCategories: CategoryWithCount[] = [
-  { id: 1, name: 'Áo sơ mi', slug: 'ao-so-mi', productCount: 4 },
-  { id: 2, name: 'Quần', slug: 'quan', productCount: 6 },
-  { id: 3, name: 'Áo thun', slug: 'ao-thun', productCount: 9 },
+  { id: 1, name: 'Áo sơ mi', slug: 'ao-so-mi', group: 'Áo', productCount: 4 },
+  { id: 2, name: 'Quần', slug: 'quan', group: 'Quần', productCount: 6 },
+  { id: 3, name: 'Áo thun', slug: 'ao-thun', group: 'Áo', productCount: 9 },
 ];
 
 const mockMonthlyStats: MonthlyStats = {
@@ -157,9 +158,9 @@ export const adminApi = {
     return structuredClone(mockCategories);
   },
 
-  async createCategory(name: string): Promise<CategoryWithCount> {
+  async createCategory(name: string, group?: CategoryGroup): Promise<CategoryWithCount> {
     if (!USE_MOCK) {
-      return request('/api/admin/categories', { method: 'POST', body: JSON.stringify({ name }) });
+      return request('/api/admin/categories', { method: 'POST', body: JSON.stringify({ name, group }) });
     }
     await delay();
     if (mockCategories.some((c) => c.name.toLowerCase() === name.toLowerCase())) {
@@ -169,9 +170,21 @@ export const adminApi = {
       id: Math.max(0, ...mockCategories.map((x) => x.id)) + 1,
       name,
       slug: slugify(name),
+      group: group ?? null,
       productCount: 0,
     };
     mockCategories = [...mockCategories, c];
+    return c;
+  },
+
+  async updateCategoryGroup(id: number, group: CategoryGroup | null): Promise<CategoryWithCount> {
+    if (!USE_MOCK) {
+      return request(`/api/admin/categories/${id}`, { method: 'PATCH', body: JSON.stringify({ group }) });
+    }
+    await delay();
+    const c = mockCategories.find((x) => x.id === id);
+    if (!c) throw new ApiException('NOT_FOUND', 'Không tìm thấy danh mục.', 404);
+    c.group = group;
     return c;
   },
 

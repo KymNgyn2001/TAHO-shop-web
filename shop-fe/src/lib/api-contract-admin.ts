@@ -4,7 +4,7 @@
 // va gui lai cho ban lam backend.
 // =====================================================================
 
-import type { ProductCard, Review, Role } from './api-contract';
+import type { ProductCard, Review, Role, CategoryGroup } from './api-contract';
 
 // ---------------------------------------------------------------------
 // Upload anh
@@ -24,11 +24,17 @@ export interface CategoryWithCount {
   id: number;
   name: string;
   slug: string;
+  group: CategoryGroup | null;
   productCount: number;
 }
 
 export interface CreateCategoryRequest {
   name: string;         // BE tu sinh slug tu name, FE khong gui slug
+  group?: CategoryGroup;
+}
+
+export interface UpdateCategoryGroupRequest {
+  group: CategoryGroup | null;
 }
 
 // ---------------------------------------------------------------------
@@ -167,6 +173,8 @@ export interface ReplyReviewRequest {
 // GET    /api/categories                        -> CategoryWithCount[]  [cong khai]
 // POST   /api/admin/categories  CreateCategoryRequest -> CategoryWithCount [EMPLOYEE, MANAGER]
 //        Loi: 409 CATEGORY_EXISTS
+// PATCH  /api/admin/categories/{id}  UpdateCategoryGroupRequest -> CategoryWithCount [EMPLOYEE, MANAGER]
+//        Doi/go nhom cua 1 danh muc da co (VD gan "Ao" cho danh muc "Hoodie").
 // DELETE /api/admin/categories/{id}             -> 204                  [EMPLOYEE, MANAGER]
 //        Loi: 409 CATEGORY_NOT_EMPTY (con san pham thi khong cho xoa)
 //

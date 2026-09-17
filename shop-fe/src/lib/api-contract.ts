@@ -231,10 +231,15 @@ export interface ChatRequest {
 // Khach vang lai:   header  X-Session-Id: <uuid luu o localStorage>
 // =====================================================================
 
+/** Nhom co dinh de menu danh muc on dinh khi hien thi phan cap. */
+export type CategoryGroup = 'Áo' | 'Quần' | 'Váy & Đầm' | 'Phụ kiện';
+
 export interface Category {
   id: number;
   name: string;
   slug: string;
+  /** null = chua xep nhom, se hien o muc "Khac" trong menu. */
+  group: CategoryGroup | null;
 }
 
 // ---------------------------------------------------------------------

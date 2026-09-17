@@ -48,7 +48,8 @@ type ProductCard = Pick<
   score?: number;
 };
 
-export type Category = { id: number; name: string; slug: string; productCount: number };
+export type CategoryGroup = 'Áo' | 'Quần' | 'Váy & Đầm' | 'Phụ kiện';
+export type Category = { id: number; name: string; slug: string; group: CategoryGroup | null; productCount: number };
 
 type CartItem = {
   id: number;
@@ -400,13 +401,13 @@ const toCard = (p: ProductDetail): ProductCard => ({
 });
 
 const MOCK_CATEGORIES: Category[] = [
-  { id: 1, name: 'Áo sơ mi', slug: 'ao-so-mi', productCount: 1 },
-  { id: 2, name: 'Quần', slug: 'quan', productCount: 1 },
-  { id: 3, name: 'Áo thun', slug: 'ao-thun', productCount: 1 },
-  { id: 4, name: 'Chân váy', slug: 'chan-vay', productCount: 1 },
-  { id: 5, name: 'Áo khoác', slug: 'ao-khoac', productCount: 1 },
-  { id: 6, name: 'Đầm', slug: 'dam', productCount: 1 },
-  { id: 7, name: 'Phụ kiện', slug: 'phu-kien', productCount: 0 },
+  { id: 1, name: 'Áo sơ mi', slug: 'ao-so-mi', group: 'Áo', productCount: 1 },
+  { id: 2, name: 'Quần', slug: 'quan', group: 'Quần', productCount: 1 },
+  { id: 3, name: 'Áo thun', slug: 'ao-thun', group: 'Áo', productCount: 1 },
+  { id: 4, name: 'Chân váy', slug: 'chan-vay', group: 'Váy & Đầm', productCount: 1 },
+  { id: 5, name: 'Áo khoác', slug: 'ao-khoac', group: 'Áo', productCount: 1 },
+  { id: 6, name: 'Đầm', slug: 'dam', group: 'Váy & Đầm', productCount: 1 },
+  { id: 7, name: 'Phụ kiện', slug: 'phu-kien', group: 'Phụ kiện', productCount: 0 },
 ];
 
 let mockCart: Cart = { id: 1, items: [], subtotal: 0 };

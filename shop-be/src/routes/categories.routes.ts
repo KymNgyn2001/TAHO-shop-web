@@ -8,6 +8,9 @@ import { requireRole } from '../middleware/auth';
 
 export const categoriesRouter = Router();
 
+/** Nhom co dinh de menu on dinh — chon 1 trong cac gia tri nay khi tao/sua danh muc. */
+export const CATEGORY_GROUPS = ['Áo', 'Quần', 'Váy & Đầm', 'Phụ kiện'] as const;
+
 categoriesRouter.get(
   '/categories',
   asyncHandler(async (_req, res) => {
@@ -16,12 +19,17 @@ categoriesRouter.get(
       orderBy: { name: 'asc' },
     });
     res.json(
-      categories.map((c) => ({ id: c.id, name: c.name, slug: c.slug, productCount: c._count.products })),
+      categories.map((c) => ({
+        id: c.id, name: c.name, slug: c.slug, group: c.group, productCount: c._count.products,
+      })),
     );
   }),
 );
 
-const createCategorySchema = z.object({ name: z.string().min(1, 'Ten danh muc khong duoc de trong.') });
+const createCategorySchema = z.object({
+  name: z.string().min(1, 'Ten danh muc khong duoc de trong.'),
+  group: z.enum(CATEGORY_GROUPS).optional(),
+});
 
 categoriesRouter.post(
   '/admin/categories',
@@ -37,8 +45,25 @@ categoriesRouter.post(
       const found = await prisma.category.findUnique({ where: { slug: s } });
       return !!found;
     });
-    const category = await prisma.category.create({ data: { name: body.name, slug } });
-    res.status(201).json({ id: category.id, name: category.name, slug: category.slug, productCount: 0 });
+    const category = await prisma.category.create({ data: { name: body.name, slug, group: body.group } });
+    res.status(201).json({
+      id: category.id, name: category.name, slug: category.slug, group: category.group, productCount: 0,
+    });
+  }),
+);
+
+const updateCategorySchema = z.object({ group: z.enum(CATEGORY_GROUPS).nullable() });
+
+categoriesRouter.patch(
+  '/admin/categories/:id',
+  requireRole('EMPLOYEE', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const body = updateCategorySchema.parse(req.body);
+    const category = await prisma.category.update({ where: { id }, data: { group: body.group } }).catch(() => {
+      throw Errors.notFound('Khong tim thay danh muc.');
+    });
+    res.json({ id: category.id, name: category.name, slug: category.slug, group: category.group });
   }),
 );
 

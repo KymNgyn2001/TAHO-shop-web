@@ -164,15 +164,24 @@
   position: relative; z-index: 1;
   padding-bottom: 2.5rem; color: #fff;
 }
-.about-hero__content h1 {
-  font-family: var(--font-wordmark), var(--font-sans), system-ui, sans-serif;
-  font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; margin: 0 0 0.5rem;
+.about-hero__content p {
+  max-width: 46ch; font-size: clamp(var(--step-0), 2.2vw, var(--step-1));
+  color: #fff; margin: 0; font-weight: 500;
 }
-.about-hero__content p { max-width: 46ch; font-size: var(--step-0); color: rgba(255,255,255,0.9); margin: 0; }
 
-.about-body { padding: 2.5rem 0 4rem; max-width: 68ch; }
+.about-body { padding: 2.5rem 0 1rem; max-width: 68ch; }
 .about-body h2 { font-size: var(--step-1); font-weight: 500; margin: 0 0 0.75rem; }
-.about-body p { color: var(--muted); line-height: 1.7; }
+.about-body p { color: var(--muted); line-height: 1.7; margin: 0 0 1rem; }
+
+.about-values {
+  padding: 1.5rem 0 4rem;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem;
+  border-top: 1px solid var(--line); margin-top: 1rem;
+}
+@media (max-width: 720px) { .about-values { grid-template-columns: 1fr; } }
+.about-values__item { display: grid; gap: 0.5rem; }
+.about-values__item h3 { font-size: var(--step-0); font-weight: 500; margin: 0.25rem 0 0; }
+.about-values__item p { color: var(--muted); font-size: var(--step--1); line-height: 1.6; margin: 0; }
 
 /* ---------- Don hang ---------- */
 
