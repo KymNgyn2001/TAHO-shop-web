@@ -741,6 +741,19 @@ export const api = {
     return structuredClone(o);
   },
 
+  async updateOrderStatus(code: string, status: 'CONFIRMED' | 'SHIPPING' | 'COMPLETED'): Promise<Order> {
+    if (!USE_MOCK) {
+      return request(`/api/admin/orders/${code}/status`, {
+        method: 'PATCH', body: JSON.stringify({ status }),
+      });
+    }
+    await delay(400);
+    const o = mockOrders.find((x) => x.code === code);
+    if (!o) throw new ApiException('NOT_FOUND', 'Không tìm thấy đơn hàng.', 404);
+    o.status = status;
+    return structuredClone(o);
+  },
+
   async chat(
     body: ChatRequest & { history?: { role: 'user' | 'assistant'; content: string }[]; context?: ChatContext },
   ): Promise<ChatMessage> {

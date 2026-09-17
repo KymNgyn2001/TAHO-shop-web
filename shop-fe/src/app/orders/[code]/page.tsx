@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
 import { useRequireRole } from '@/lib/require-role';
+import { useAuth } from '@/lib/auth-context';
 import { vietQrImageUrl, bankInfo } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
@@ -18,14 +19,25 @@ const STATUS_VI: Record<string, string> = {
   CANCELLED: 'Đã huỷ',
 };
 
+/** Nhan vien/quan ly xac nhan tay sau khi tu kiem tra da nhan duoc tien (QR chi la
+ * goi y chuyen khoan, khong phai cong thanh toan nen he thong khong tu biet). */
+const NEXT_STATUS: Record<string, { status: 'CONFIRMED' | 'SHIPPING' | 'COMPLETED'; label: string } | undefined> = {
+  PENDING: { status: 'CONFIRMED', label: 'Xác nhận đã nhận thanh toán' },
+  CONFIRMED: { status: 'SHIPPING', label: 'Chuyển sang Đang giao' },
+  SHIPPING: { status: 'COMPLETED', label: 'Đánh dấu Hoàn tất' },
+};
+
 export default function OrderDetailPage() {
   const { ready } = useRequireRole(['CUSTOMER', 'EMPLOYEE', 'MANAGER']);
+  const { user } = useAuth();
   const { code } = useParams<{ code: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [reason, setReason] = useState('');
+  const [advancing, setAdvancing] = useState(false);
+  const isStaff = user?.role === 'EMPLOYEE' || user?.role === 'MANAGER';
 
   useEffect(() => {
     if (!ready) return;
@@ -50,6 +62,21 @@ export default function OrderDetailPage() {
       setError(e instanceof ApiException ? e.message : 'Không huỷ được đơn hàng.');
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function advanceStatus() {
+    const next = order && NEXT_STATUS[order.status];
+    if (!next) return;
+    setAdvancing(true);
+    setError(null);
+    try {
+      const updated = await api.updateOrderStatus(code, next.status);
+      setOrder(updated);
+    } catch (e) {
+      setError(e instanceof ApiException ? e.message : 'Không đổi được trạng thái đơn.');
+    } finally {
+      setAdvancing(false);
     }
   }
 
@@ -116,6 +143,18 @@ export default function OrderDetailPage() {
         {order.note && (<><dt>Ghi chú</dt><dd>{order.note}</dd></>)}
         {order.cancelReason && (<><dt>Lý do huỷ</dt><dd>{order.cancelReason}</dd></>)}
       </dl>
+
+      {isStaff && NEXT_STATUS[order.status] && (
+        <button
+          type="button"
+          className="btn-primary"
+          style={{ marginBottom: '0.75rem' }}
+          onClick={advanceStatus}
+          disabled={advancing}
+        >
+          {advancing ? 'Đang cập nhật…' : NEXT_STATUS[order.status]!.label}
+        </button>
+      )}
 
       {order.cancellable && (
         showCancelForm ? (

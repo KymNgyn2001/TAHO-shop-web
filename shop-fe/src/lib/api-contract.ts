@@ -216,6 +216,12 @@ export interface ChatRequest {
 //      Chi chu don hang hoac MANAGER moi huy duoc.
 //                             409 ORDER_NOT_CANCELLABLE
 //
+// PATCH /api/admin/orders/{code}/status  {status}  -> Order      [EMPLOYEE/MANAGER]
+//      status: CONFIRMED | SHIPPING | COMPLETED — chi tien toi, khong lui lai duoc.
+//      Dung sau khi nhan vien tu kiem tra da nhan duoc tien chuyen khoan (QR chi la
+//      goi y chuyen khoan, khong phai cong thanh toan nen he thong khong tu biet).
+//                             409 ORDER_CANCELLED
+//
 // POST /api/chat              ChatRequest -> ChatMessage
 //      FE luu `context` tu response gan nhat va gui lai o request tiep theo —
 //      nho vay bot moi hieu duoc "lay mau den size L 2 cai" sau khi vua goi y san pham,

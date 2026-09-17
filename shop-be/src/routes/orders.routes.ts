@@ -7,7 +7,7 @@ import { toOrder } from '../lib/mappers';
 import { nextOrderCode } from '../lib/orderCode';
 import { evaluateDiscountCode } from '../lib/discount';
 import { clearCart, resolveCart } from '../lib/cart';
-import { requireAuth } from '../middleware/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 export const ordersRouter = Router();
 
@@ -199,6 +199,37 @@ ordersRouter.post(
       });
     });
 
+    res.json(toOrder(updated));
+  }),
+);
+
+/** Thu tu tien trien don hang — nhan vien/quan ly chi duoc chuyen toi, khong lui lai
+ * duoc, va khong dung endpoint nay de huy (da co /cancel rieng, co hoan kho). */
+const STATUS_FLOW = ['PENDING', 'CONFIRMED', 'SHIPPING', 'COMPLETED'] as const;
+const updateStatusSchema = z.object({ status: z.enum(['CONFIRMED', 'SHIPPING', 'COMPLETED']) });
+
+ordersRouter.patch(
+  '/admin/orders/:code/status',
+  requireRole('EMPLOYEE', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const body = updateStatusSchema.parse(req.body);
+    const order = await prisma.order.findUnique({ where: { code: req.params.code } });
+    if (!order) throw Errors.notFound('Khong tim thay don hang.');
+    if (order.status === 'CANCELLED') {
+      throw Errors.conflict('ORDER_CANCELLED', 'Don da huy, khong doi trang thai duoc nua.');
+    }
+
+    const currentIdx = STATUS_FLOW.indexOf(order.status as (typeof STATUS_FLOW)[number]);
+    const nextIdx = STATUS_FLOW.indexOf(body.status);
+    if (nextIdx <= currentIdx) {
+      throw Errors.validation('Chi co the chuyen sang trang thai sau, khong lui lai duoc.', 'status');
+    }
+
+    const updated = await prisma.order.update({
+      where: { id: order.id },
+      data: { status: body.status },
+      include: orderInclude,
+    });
     res.json(toOrder(updated));
   }),
 );
