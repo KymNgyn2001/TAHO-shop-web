@@ -1,7 +1,7 @@
 // src/app/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { api, ApiException, type Category } from '@/lib/api-client';
@@ -30,7 +30,17 @@ function ProductSection({ title, products }: { title: string; products: ProductC
   );
 }
 
+/** useSearchParams() bat buoc phai nam trong <Suspense> khi build production
+ * (next static prerender), khong thi bi loi "Error occurred prerendering page /". */
 export default function HomePage() {
+  return (
+    <Suspense fallback={<div className="wrap"><div className="skeleton" style={{ height: 300 }} /></div>}>
+      <HomeContent />
+    </Suspense>
+  );
+}
+
+function HomeContent() {
   const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number | ''>('');
