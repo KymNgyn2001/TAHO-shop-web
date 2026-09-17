@@ -151,10 +151,14 @@
 
 .about-hero {
   position: relative;
-  height: min(60vh, 480px);
+  /* Ty le dung bang anh that (1024x559) de "cover" khong phai cat bot —
+   * chi cat khi man hinh rong hon max-height cho phep, va uu tien giu
+   * phan tren (bang hieu TAHO) qua background-position "center 30%". */
+  aspect-ratio: 1024 / 559;
+  max-height: 560px;
   display: flex; align-items: flex-end;
   /* CHO SUA SAU: doi duong dan neu doi ten/dinh dang file anh mat tien shop. */
-  background: url('/about-storefront.jpg') center / cover no-repeat, var(--ink);
+  background: url('/about-storefront.jpg') center 30% / cover no-repeat, var(--ink);
 }
 .about-hero__overlay {
   position: absolute; inset: 0;
