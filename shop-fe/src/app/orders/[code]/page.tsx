@@ -6,6 +6,7 @@ import { useParams } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
 import { useRequireRole } from '@/lib/require-role';
+import { vietQrImageUrl, bankInfo } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -70,9 +71,17 @@ export default function OrderDetailPage() {
       {error && <p className="error-bar">{error}</p>}
 
       {order.paymentMethod === 'BANK_TRANSFER' && order.status === 'PENDING' && (
-        <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
-          Vui lòng chuyển khoản số tiền <strong>{vnd(order.totalAmount)}</strong> và ghi nội dung
-          <strong> {order.code}</strong> để đơn được xác nhận nhanh hơn.
+        <div className="bank-qr">
+          <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+            Vui lòng chuyển khoản số tiền <strong>{vnd(order.totalAmount)}</strong> và ghi nội dung
+            <strong> {order.code}</strong> để đơn được xác nhận nhanh hơn.
+          </div>
+          <img
+            src={vietQrImageUrl(order.totalAmount, order.code)}
+            alt={`QR chuyển khoản ${bankInfo.bankName} ${bankInfo.accountNo}`}
+            className="bank-qr__img"
+          />
+          <p className="bank-qr__note">Quét mã bằng app ngân hàng bất kỳ — số tiền và nội dung đã được điền sẵn.</p>
         </div>
       )}
 

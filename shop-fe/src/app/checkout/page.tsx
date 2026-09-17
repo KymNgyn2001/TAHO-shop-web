@@ -7,6 +7,7 @@ import { api, ApiException } from '@/lib/api-client';
 import type { Cart, Order, ShippingMethod } from '@/lib/api-contract';
 import { useAuth } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
+import { vietQrImageUrl, bankInfo } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -118,9 +119,19 @@ export default function CheckoutPage() {
             {placedOrder.paymentMethod === 'COD' ? 'tiền mặt khi nhận hàng' : 'chuyển khoản ngân hàng'}.
           </p>
           {placedOrder.paymentMethod === 'BANK_TRANSFER' && (
-            <p className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
-              Vui lòng chuyển khoản và ghi nội dung <strong>{placedOrder.code}</strong> để đơn được xác nhận nhanh hơn.
-            </p>
+            <div className="bank-qr">
+              <p className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+                Vui lòng chuyển khoản và ghi nội dung <strong>{placedOrder.code}</strong> để đơn được xác nhận nhanh hơn.
+              </p>
+              <img
+                src={vietQrImageUrl(placedOrder.totalAmount, placedOrder.code)}
+                alt={`QR chuyển khoản ${bankInfo.bankName} ${bankInfo.accountNo}`}
+                className="bank-qr__img"
+              />
+              <p className="bank-qr__note">
+                Quét mã bằng app ngân hàng bất kỳ — số tiền và nội dung đã được điền sẵn.
+              </p>
+            </div>
           )}
           {user ? (
             <Link href={`/orders/${placedOrder.code}`} className="btn-primary" style={{ display: 'inline-block', textDecoration: 'none', textAlign: 'center' }}>
