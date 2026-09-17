@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import { api, ApiException, type Category } from '@/lib/api-client';
 import type { ProductCard, Audience } from '@/lib/api-contract';
@@ -30,10 +31,33 @@ function ProductSection({ title, products }: { title: string; products: ProductC
 }
 
 export default function HomePage() {
+  const searchParams = useSearchParams();
   const [categories, setCategories] = useState<Category[]>([]);
   const [categoryId, setCategoryId] = useState<number | ''>('');
+  const [audience, setAudience] = useState<Audience | ''>('');
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<Mode>({ kind: 'browse' });
+
+  // Header (SiteHeader) dieu huong toi day bang ?categoryId= hoac ?audience= —
+  // doc lai moi khi URL doi de link tren header thuc su loc duoc san pham.
+  useEffect(() => {
+    function syncFromUrl() {
+      const catParam = searchParams.get('categoryId');
+      const audParam = searchParams.get('audience') as Audience | null;
+      setMode({ kind: 'browse' });
+      if (catParam) {
+        setCategoryId(Number(catParam));
+        setAudience('');
+      } else if (audParam) {
+        setAudience(audParam);
+        setCategoryId('');
+      } else {
+        setCategoryId('');
+        setAudience('');
+      }
+    }
+    syncFromUrl();
+  }, [searchParams]);
 
   const [browseProducts, setBrowseProducts] = useState<ProductCard[]>([]);
   const [sections, setSections] = useState<Record<Audience, ProductCard[]>>({
@@ -52,13 +76,14 @@ export default function HomePage() {
     function load() {
       setLoading(true);
       setError(null);
-      api.listProducts(0, 12, categoryId ? { categoryId } : undefined)
+      const filters = categoryId ? { categoryId } : audience ? { audience } : undefined;
+      api.listProducts(0, 12, filters)
         .then((p) => setBrowseProducts(p.items))
         .catch(() => setError('Không tải được sản phẩm.'))
         .finally(() => setLoading(false));
     }
     if (mode.kind === 'browse') load();
-  }, [mode.kind, categoryId]);
+  }, [mode.kind, categoryId, audience]);
 
   useEffect(() => {
     function load() {
@@ -102,7 +127,7 @@ export default function HomePage() {
     setQuery('');
   }
 
-  const showCurated = mode.kind === 'browse' && categoryId === '';
+  const showCurated = mode.kind === 'browse' && categoryId === '' && audience === '';
 
   return (
     <div className="wrap">
@@ -113,6 +138,7 @@ export default function HomePage() {
           onChange={(e) => {
             setMode({ kind: 'browse' });
             setCategoryId(e.target.value ? Number(e.target.value) : '');
+            setAudience('');
           }}
           aria-label="Lọc theo danh mục"
         >
@@ -151,7 +177,13 @@ export default function HomePage() {
       ) : (
         <>
           <div className="section-head">
-            <h2>{categoryId ? categories.find((c) => c.id === categoryId)?.name ?? 'Sản phẩm' : 'Mới về'}</h2>
+            <h2>
+              {categoryId
+                ? categories.find((c) => c.id === categoryId)?.name ?? 'Sản phẩm'
+                : audience
+                ? AUDIENCE_SECTIONS.find((s) => s.key === audience)?.title ?? 'Sản phẩm'
+                : 'Mới về'}
+            </h2>
             {!loading && <span>{browseProducts.length} sản phẩm</span>}
           </div>
           <ProductGrid products={browseProducts} loading={loading} emptyMessage="Chưa có sản phẩm nào ở danh mục này." />

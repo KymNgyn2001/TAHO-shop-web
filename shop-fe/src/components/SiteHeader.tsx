@@ -1,18 +1,33 @@
 // src/components/SiteHeader.tsx
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ShoppingBag, ChevronDown } from 'lucide-react';
+import { ShoppingBag, ChevronDown, Search, User } from 'lucide-react';
 import { useAuth, roleLabel } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
+import { api, type Category } from '@/lib/api-client';
+
+const AUDIENCE_LINKS = [
+  { audience: 'MEN', label: 'Nam' },
+  { audience: 'WOMEN', label: 'Nữ' },
+  { audience: 'KIDS', label: 'Trẻ em' },
+] as const;
 
 export default function SiteHeader() {
   const { user, loading, logout } = useAuth();
   const { count } = useCart();
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    api.categories().then(setCategories).catch(() => {});
+  }, []);
+
+  const accessoryCat = categories.find((c) => c.name.toLowerCase() === 'phụ kiện');
 
   async function handleLogout() {
     setMenuOpen(false);
@@ -26,12 +41,49 @@ export default function SiteHeader() {
       <div className="wrap site-header__inner">
         <Link href="/" className="wordmark">TAHO</Link>
 
-        <nav className="header-actions">
-          {user && <Link href="/orders">Đơn hàng</Link>}
+        <nav className="header-nav">
+          <div className="header-nav__item">
+            <button
+              type="button"
+              className="header-nav__trigger"
+              onClick={() => setCatMenuOpen((v) => !v)}
+              aria-expanded={catMenuOpen}
+            >
+              Danh mục <ChevronDown size={13} strokeWidth={1.5} />
+            </button>
+            {catMenuOpen && (
+              <>
+                <button type="button" className="user-menu__scrim" aria-label="Đóng menu" onClick={() => setCatMenuOpen(false)} />
+                <div className="header-nav__dropdown">
+                  {categories.map((c) => (
+                    <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
+                      {c.name}
+                    </Link>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
 
-          {(user?.role === 'EMPLOYEE' || user?.role === 'MANAGER') && (
-            <Link href="/admin/products">Quản trị</Link>
+          {AUDIENCE_LINKS.map((a) => (
+            <Link key={a.audience} href={`/?audience=${a.audience}`} className="header-nav__item header-nav__link">
+              {a.label}
+            </Link>
+          ))}
+
+          {accessoryCat && (
+            <Link href={`/?categoryId=${accessoryCat.id}`} className="header-nav__item header-nav__link">
+              Phụ kiện
+            </Link>
           )}
+
+          <Link href="/" className="header-nav__item header-nav__link">Cửa hàng</Link>
+        </nav>
+
+        <div className="header-actions">
+          <Link href="/" className="icon-btn" aria-label="Tìm sản phẩm">
+            <Search size={19} strokeWidth={1.5} />
+          </Link>
 
           <Link href="/cart" className="cart-link" aria-label="Giỏ hàng">
             <ShoppingBag size={20} strokeWidth={1.5} />
@@ -45,9 +97,9 @@ export default function SiteHeader() {
                 className="user-menu__trigger"
                 onClick={() => setMenuOpen((v) => !v)}
                 aria-expanded={menuOpen}
+                aria-label="Tài khoản"
               >
-                {user.name.split(' ').slice(-1)[0]}
-                <ChevronDown size={14} strokeWidth={1.5} />
+                <User size={19} strokeWidth={1.5} />
               </button>
               {menuOpen && (
                 <>
@@ -58,7 +110,7 @@ export default function SiteHeader() {
                     onClick={() => setMenuOpen(false)}
                   />
                   <div className="user-menu__panel">
-                    <p className="user-menu__role">{roleLabel(user.role)}</p>
+                    <p className="user-menu__role">{roleLabel(user.role)} · {user.name}</p>
                     <p className="user-menu__email">{user.email}</p>
                     <hr />
                     <Link href="/orders" onClick={() => setMenuOpen(false)}>Đơn hàng của tôi</Link>
@@ -84,7 +136,7 @@ export default function SiteHeader() {
           ) : (
             <Link href="/login" className="btn-ghost">Đăng nhập</Link>
           )}
-        </nav>
+        </div>
       </div>
     </header>
   );
