@@ -115,9 +115,8 @@ button { font: inherit; cursor: pointer; }
   margin-top: 3rem;
 }
 .site-footer__perks {
-  display: flex; flex-wrap: wrap; gap: 2rem;
-  padding: 1.5rem 0;
-  border-bottom: 1px solid rgba(255,255,255,0.15);
+  display: flex; flex-wrap: wrap; gap: 1.5rem;
+  margin-top: 1.1rem;
 }
 .site-footer__perk { display: flex; align-items: center; gap: 0.7rem; }
 .site-footer__perk div { display: grid; line-height: 1.3; }

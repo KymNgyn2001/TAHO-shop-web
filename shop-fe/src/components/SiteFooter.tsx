@@ -38,23 +38,6 @@ function InstagramIcon() {
 export default function SiteFooter() {
   return (
     <footer className="site-footer">
-      <div className="wrap site-footer__perks">
-        <div className="site-footer__perk">
-          <Package size={22} strokeWidth={1.5} />
-          <div>
-            <strong>Miễn phí ship</strong>
-            <span>Toàn quốc</span>
-          </div>
-        </div>
-        <div className="site-footer__perk">
-          <ShieldCheck size={22} strokeWidth={1.5} />
-          <div>
-            <strong>Bảo hành</strong>
-            <span>365 ngày</span>
-          </div>
-        </div>
-      </div>
-
       <div className="wrap site-footer__inner">
         <div className="site-footer__brand">
           <Link href="/" className="wordmark">TAHO</Link>
@@ -64,6 +47,23 @@ export default function SiteFooter() {
             {/* CHO SUA SAU: email/SDT lien he cua TAHO */}
             <a href="mailto:tahowear@gmail.com">tahowear@gmail.com</a>
             <a href="tel:0939299099">0939 299 099</a>
+          </div>
+
+          <div className="site-footer__perks">
+            <div className="site-footer__perk">
+              <Package size={22} strokeWidth={1.5} />
+              <div>
+                <strong>Miễn phí ship</strong>
+                <span>Toàn quốc</span>
+              </div>
+            </div>
+            <div className="site-footer__perk">
+              <ShieldCheck size={22} strokeWidth={1.5} />
+              <div>
+                <strong>Bảo hành</strong>
+                <span>365 ngày</span>
+              </div>
+            </div>
           </div>
         </div>
 

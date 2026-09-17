@@ -86,7 +86,7 @@ export default function SiteHeader() {
             </Link>
           )}
 
-          <Link href="/" className="header-nav__item header-nav__link">Cửa hàng</Link>
+          <Link href="/about" className="header-nav__item header-nav__link">About Us</Link>
         </nav>
 
         <div className="header-actions">

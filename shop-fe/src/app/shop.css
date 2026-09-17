@@ -147,6 +147,33 @@
 .bank-qr__img { width: 100%; max-width: 260px; border: 1px solid var(--line); border-radius: 8px; }
 .bank-qr__note { font-size: var(--step--1); color: var(--muted); margin: 0; }
 
+/* ---------- About Us ---------- */
+
+.about-hero {
+  position: relative;
+  height: min(60vh, 480px);
+  display: flex; align-items: flex-end;
+  /* CHO SUA SAU: doi duong dan neu doi ten/dinh dang file anh mat tien shop. */
+  background: url('/about-storefront.jpg') center / cover no-repeat, var(--ink);
+}
+.about-hero__overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.15));
+}
+.about-hero__content {
+  position: relative; z-index: 1;
+  padding-bottom: 2.5rem; color: #fff;
+}
+.about-hero__content h1 {
+  font-family: var(--font-wordmark), var(--font-sans), system-ui, sans-serif;
+  font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; margin: 0 0 0.5rem;
+}
+.about-hero__content p { max-width: 46ch; font-size: var(--step-0); color: rgba(255,255,255,0.9); margin: 0; }
+
+.about-body { padding: 2.5rem 0 4rem; max-width: 68ch; }
+.about-body h2 { font-size: var(--step-1); font-weight: 500; margin: 0 0 0.75rem; }
+.about-body p { color: var(--muted); line-height: 1.7; }
+
 /* ---------- Don hang ---------- */
 
 .orders-page { padding: 2rem 0 5rem; display: grid; gap: 1.25rem; }
