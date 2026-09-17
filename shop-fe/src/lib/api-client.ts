@@ -203,7 +203,7 @@ const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
  */
 function resolveBaseUrl(): string {
   const configured = process.env.NEXT_PUBLIC_API_URL;
-  if (configured) return configured;
+  if (configured) return configured.replace(/\/+$/, '');
   if (typeof window !== 'undefined') {
     return `${window.location.protocol}//${window.location.hostname}:8080`;
   }
