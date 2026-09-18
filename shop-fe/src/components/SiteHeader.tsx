@@ -167,7 +167,9 @@ export default function SiteHeader() {
                     <p className="user-menu__role">{roleLabel(user.role)} · {user.name}</p>
                     <p className="user-menu__email">{user.email}</p>
                     <hr />
-                    <Link href="/orders" onClick={() => setMenuOpen(false)}>Đơn hàng của tôi</Link>
+                    {user.role === 'CUSTOMER' && (
+                      <Link href="/orders" onClick={() => setMenuOpen(false)}>Đơn hàng của tôi</Link>
+                    )}
                     {user.role === 'MANAGER' && (
                       <>
                         <Link href="/admin/stats" onClick={() => setMenuOpen(false)}>Báo cáo KPI</Link>
@@ -176,7 +178,7 @@ export default function SiteHeader() {
                     )}
                     {(user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
                       <>
-                        <Link href="/admin/orders" onClick={() => setMenuOpen(false)}>Đơn hàng (tất cả)</Link>
+                        <Link href="/admin/orders" onClick={() => setMenuOpen(false)}>Đơn hàng</Link>
                         <Link href="/admin/products" onClick={() => setMenuOpen(false)}>Sản phẩm</Link>
                         <Link href="/admin/products/new" onClick={() => setMenuOpen(false)}>Đăng sản phẩm</Link>
                         <Link href="/admin/categories" onClick={() => setMenuOpen(false)}>Danh mục</Link>

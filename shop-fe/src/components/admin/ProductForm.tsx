@@ -23,6 +23,8 @@ const newColor = (): ColorGroup => ({
 
 const cellKey = (color: string, size: string) => `${color}::${size}`;
 
+const PRESET_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
+
 const fileNameOf = (url: string) => url.split('/').pop() ?? url;
 
 function buildInitialState(initial: ProductDetail) {
@@ -105,7 +107,6 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   // --- size ---
   const [sizes, setSizes] = useState<string[]>(seed?.sizes ?? []);
-  const [sizeInput, setSizeInput] = useState('');
 
   // --- ma tran gia / ton kho theo (mau, size) ---
   const [cells, setCells] = useState<Record<string, { priceOverride: string; stockQty: string }>>(seed?.cells ?? {});
@@ -231,16 +232,8 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   // ---------------- size ----------------
 
-  function addSizes() {
-    const parts = sizeInput.split(',').map((s) => s.trim()).filter(Boolean);
-    if (parts.length === 0) return;
-    setSizes((prev) => {
-      const existingLower = new Set(prev.map((s) => s.toLowerCase()));
-      const additions = parts.filter((p) => !existingLower.has(p.toLowerCase()));
-      return [...prev, ...additions];
-    });
-    setSizeInput('');
-  }
+  const toggleSize = (s: string) =>
+    setSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
 
   const removeSize = (s: string) => setSizes((prev) => prev.filter((x) => x !== s));
 
@@ -264,6 +257,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   const validColors = colors.filter((c) => c.name.trim() !== '');
   const validSizes = sizes.filter(Boolean);
+  const extraSizes = sizes.filter((s) => !PRESET_SIZES.includes(s));
   const hasAnyImage = images.length > 0 || validColors.some((c) => c.images.length > 0);
 
   const ready =
@@ -554,31 +548,34 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       {/* ---------- Size ---------- */}
       <section className="panel">
         <h2>Size</h2>
-        <div className="tag-row" style={{ marginBottom: '0.85rem' }}>
-          {sizes.map((s) => (
-            <span key={s} className="tag" aria-pressed="true">
+        <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+          Bấm vào size để bật/tắt — sản phẩm sẽ có đúng những size đang bật.
+        </p>
+        <div className="tag-row">
+          {PRESET_SIZES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className="tag"
+              aria-pressed={sizes.includes(s)}
+              onClick={() => toggleSize(s)}
+            >
               {s}
-              <button type="button" onClick={() => removeSize(s)} aria-label={`Xoá size ${s}`} style={{ border: 0, background: 'none', cursor: 'pointer', display: 'inline-flex' }}>
-                <X size={12} />
-              </button>
-            </span>
+            </button>
           ))}
         </div>
-        <div className="field-row" style={{ alignItems: 'end' }}>
-          <div className="field" style={{ margin: 0 }}>
-            <label htmlFor="sizeInput">Thêm size (cách nhau bằng dấu phẩy)</label>
-            <input
-              id="sizeInput"
-              value={sizeInput}
-              onChange={(e) => setSizeInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addSizes()}
-              placeholder="S, M, L, XL"
-            />
+        {extraSizes.length > 0 && (
+          <div className="tag-row" style={{ marginTop: '0.6rem' }}>
+            {extraSizes.map((s) => (
+              <span key={s} className="tag" aria-pressed="true">
+                {s}
+                <button type="button" onClick={() => removeSize(s)} aria-label={`Xoá size ${s}`} style={{ border: 0, background: 'none', cursor: 'pointer', display: 'inline-flex' }}>
+                  <X size={12} />
+                </button>
+              </span>
+            ))}
           </div>
-          <button type="button" className="chip" style={{ height: 40 }} onClick={addSizes} disabled={!sizeInput.trim()}>
-            <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm
-          </button>
-        </div>
+        )}
       </section>
 
       {/* ---------- Ma tran gia / ton kho ---------- */}
