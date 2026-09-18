@@ -1,9 +1,9 @@
 // src/app/admin/products/page.tsx
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
 import type { ProductCard } from '@/lib/api-contract';
 import { adminApi } from '@/lib/admin-api';
@@ -22,15 +22,24 @@ export default function AdminProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [togglingId, setTogglingId] = useState<number | null>(null);
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (!ready) return;
     function load() {
       setLoading(true);
-      api.listProducts(0, 100).then((p) => setProducts(p.items)).finally(() => setLoading(false));
+      api.listProducts(0, 100, { includeInactive: true }).then((p) => setProducts(p.items)).finally(() => setLoading(false));
     }
     load();
   }, [ready]);
+
+  const filteredProducts = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return products;
+    return products.filter((p) =>
+      p.name.toLowerCase().includes(q) || (p.categoryName ?? '').toLowerCase().includes(q),
+    );
+  }, [products, search]);
 
   async function toggleActive(id: number, name: string, active: boolean) {
     setError(null);
@@ -63,12 +72,26 @@ export default function AdminProductsPage() {
 
   return (
     <div className="wrap admin">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
         <h1>Sản phẩm</h1>
         <Link href="/admin/products/new" className="chip chip--solid">
           <Plus size={14} style={{ verticalAlign: '-2px' }} /> Đăng sản phẩm mới
         </Link>
       </div>
+
+      {products.length > 0 && (
+        <div className="field" style={{ maxWidth: 360, margin: '0 0 1rem' }}>
+          <label htmlFor="psearch" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+            <Search size={13} strokeWidth={1.5} /> Tìm theo tên hoặc danh mục
+          </label>
+          <input
+            id="psearch"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="VD: hoodie, đầm, áo sơ mi…"
+          />
+        </div>
+      )}
 
       {error && <p className="error-bar">{error}</p>}
 
@@ -76,6 +99,8 @@ export default function AdminProductsPage() {
         <div className="skeleton" style={{ height: 200 }} />
       ) : products.length === 0 ? (
         <div className="empty"><p>Chưa có sản phẩm nào.</p></div>
+      ) : filteredProducts.length === 0 ? (
+        <div className="empty"><p>Không tìm thấy sản phẩm nào khớp “{search}”.</p></div>
       ) : (
         <section className="panel">
           <div className="table-scroll">
@@ -84,7 +109,7 @@ export default function AdminProductsPage() {
                 <tr><th /><th>Tên</th><th>Danh mục</th><th>Đối tượng</th><th className="num">Giá</th><th>Trạng thái</th><th /></tr>
               </thead>
               <tbody>
-                {products.map((p) => (
+                {filteredProducts.map((p) => (
                   <tr key={p.id}>
                     <td style={{ width: 48 }}>
                       {p.primaryImageUrl && (

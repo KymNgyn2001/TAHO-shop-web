@@ -487,12 +487,13 @@ export const api = {
   async listProducts(
     page = 0,
     size = 12,
-    filters?: { categoryId?: number; audience?: Audience },
+    filters?: { categoryId?: number; audience?: Audience; includeInactive?: boolean },
   ): Promise<Page<ProductCard>> {
     if (!USE_MOCK) {
       const q = new URLSearchParams({ page: String(page), size: String(size) });
       if (filters?.categoryId) q.set('categoryId', String(filters.categoryId));
       if (filters?.audience) q.set('audience', filters.audience);
+      if (filters?.includeInactive) q.set('includeInactive', 'true');
       return request(`/api/products?${q}`);
     }
     await delay();
@@ -502,6 +503,7 @@ export const api = {
       pool = pool.filter((p) => p.categoryName === cat?.name);
     }
     if (filters?.audience) pool = pool.filter((p) => p.audience === filters.audience);
+    if (!filters?.includeInactive) pool = pool.filter((p) => p.active);
     const items = pool.slice(page * size, page * size + size).map(toCard);
     return { items, page, size, totalItems: pool.length, totalPages: Math.max(1, Math.ceil(pool.length / size)) };
   },

@@ -27,13 +27,15 @@ productsRouter.get(
     const categoryId = req.query.categoryId ? Number(req.query.categoryId) : undefined;
     const audienceParam = req.query.audience as string | undefined;
     const audience = audienceParam && AUDIENCES.has(audienceParam as Audience) ? (audienceParam as Audience) : undefined;
+    // Chi trang quan tri san pham moi duoc phep xin xem ca hang da an (phai vua la
+    // nhan vien/quan ly vua chu dong xin) — nhan vien luot xem trang chu/danh muc
+    // nhu khach binh thuong thi van khong thay hang da an, tranh nham lan.
+    const includeInactive = req.query.includeInactive === 'true' && isStaff(req.userRole);
 
-    // Khach hang chi thay san pham dang ban — nhan vien/quan ly (VD dang o trang
-    // quan tri) thay ca san pham da an de con quan ly duoc.
     const where = {
       ...(categoryId ? { categoryId } : {}),
       ...(audience ? { audience } : {}),
-      ...(isStaff(req.userRole) ? {} : { active: true }),
+      ...(includeInactive ? {} : { active: true }),
     };
     const [items, totalItems] = await Promise.all([
       prisma.product.findMany({
