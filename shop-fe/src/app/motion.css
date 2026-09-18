@@ -192,6 +192,9 @@
   border-bottom: 1px solid var(--line);
 }
 .table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+/* Tieu de cot ".num" phai canh phai giong voi gia tri ben duoi, khong thi tieu de
+   nam ben trai con so lieu nam ben phai — nhin lech hang giua tieu de va gia tri. */
+.table th.num { text-align: right; }
 
 .pill {
   display: inline-block; padding: 0.15rem 0.55rem;
