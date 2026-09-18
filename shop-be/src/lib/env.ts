@@ -28,4 +28,16 @@ export const env = {
   r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
   r2Bucket: process.env.R2_BUCKET_NAME ?? '',
   r2PublicUrl: (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, ''),
+  // URL cua chinh FE/BE khi da len production — dung de dung sinh redirectUrl/ipnUrl
+  // cho MoMo (khong the tu suy tu request nhu cac cho khac, vi MoMo tu server ho goi
+  // thang vao, khong phai trinh duyet cua khach).
+  frontendUrl: (process.env.FRONTEND_URL ?? 'https://taho-shop-web.vercel.app').replace(/\/$/, ''),
+  backendPublicUrl: (process.env.BACKEND_PUBLIC_URL ?? 'https://taho-shop-web-aehw.onrender.com').replace(/\/$/, ''),
+  // MoMo (vi dien tu) — mac dinh la bo tai khoan TEST dung chung MoMo cong khai trong
+  // tai lieu cho nha phat trien thu nghiem (khong can dang ky). Neu muon dung tai
+  // khoan sandbox rieng, dang ky mien phi tai business.momo.vn roi ghi de 3 bien nay.
+  momoPartnerCode: process.env.MOMO_PARTNER_CODE ?? 'MOMO',
+  momoAccessKey: process.env.MOMO_ACCESS_KEY ?? 'F8BBA842ECF85',
+  momoSecretKey: process.env.MOMO_SECRET_KEY ?? 'K951B6PE1waDMi640xX08PD3vg6EkVlz',
+  momoEndpoint: process.env.MOMO_ENDPOINT ?? 'https://test-payment.momo.vn/v2/gateway/api/create',
 };

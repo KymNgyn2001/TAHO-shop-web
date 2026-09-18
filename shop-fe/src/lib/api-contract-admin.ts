@@ -119,7 +119,7 @@ export interface Transaction {
   itemCount: number;
   totalAmount: number;
   status: 'PENDING' | 'CONFIRMED' | 'SHIPPING' | 'COMPLETED' | 'CANCELLED';
-  paymentMethod: 'COD' | 'BANK_TRANSFER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'MOMO';
   createdAt: string;
 }
 

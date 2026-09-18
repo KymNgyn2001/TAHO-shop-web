@@ -81,7 +81,7 @@ type CreateOrderRequest = {
   items: CreateOrderItemRequest[];
   shippingMethodId: number;
   discountCode?: string;
-  paymentMethod: 'COD' | 'BANK_TRANSFER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'MOMO';
   receiverName: string;
   receiverPhone: string;
   email: string;
@@ -111,7 +111,7 @@ type Order = {
   discountCode: string | null;
   discountAmount: number;
   totalAmount: number;
-  paymentMethod: 'COD' | 'BANK_TRANSFER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'MOMO';
   receiverName: string;
   receiverPhone: string;
   email: string | null;
@@ -122,6 +122,8 @@ type Order = {
   cancelledAt: string | null;
   cancelReason: string | null;
   cancellable: boolean;
+  payUrl?: string | null;
+  payError?: string | null;
 };
 
 type Page<T> = {

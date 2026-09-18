@@ -10,6 +10,7 @@ import { evaluateDiscountCode } from '../lib/discount';
 import { clearCart, resolveCart } from '../lib/cart';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { sendOrderConfirmationEmail } from '../lib/mailer';
+import { createMomoPayment } from '../lib/momo';
 
 export const ordersRouter = Router();
 
@@ -28,7 +29,7 @@ const createOrderSchema = z.object({
   email: z.string().email('Email khong hop le.'),
   shippingAddress: z.string().min(1, 'Vui long nhap dia chi giao hang.'),
   note: z.string().optional(),
-  paymentMethod: z.enum(['COD', 'BANK_TRANSFER']),
+  paymentMethod: z.enum(['COD', 'BANK_TRANSFER', 'MOMO']),
 });
 
 ordersRouter.post(
@@ -153,6 +154,24 @@ ordersRouter.post(
         productName: i.productName, size: i.size, color: i.color, quantity: i.quantity, lineTotal: i.lineTotal,
       })),
     });
+
+    if (order.paymentMethod === 'MOMO') {
+      try {
+        const payment = await createMomoPayment({
+          orderCode: order.code,
+          amount: order.totalAmount,
+          orderInfo: `Thanh toan don hang ${order.code} - TAHO`,
+        });
+        if (payment.resultCode === 0 && payment.payUrl) {
+          return res.status(201).json({ ...toOrder(order), payUrl: payment.payUrl });
+        }
+        // MoMo tu choi tao thanh toan (VD sai cau hinh sandbox) — don van da tao
+        // xong (con PENDING), chi bao loi de FE hien thong bao, khong lam mat don.
+        return res.status(201).json({ ...toOrder(order), payUrl: null, payError: payment.message });
+      } catch {
+        return res.status(201).json({ ...toOrder(order), payUrl: null, payError: 'Khong ket noi duoc toi MoMo.' });
+      }
+    }
 
     res.status(201).json(toOrder(order));
   }),

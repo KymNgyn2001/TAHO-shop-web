@@ -128,7 +128,7 @@ export interface Order {
   discountCode: string | null;
   discountAmount: number;
   totalAmount: number;
-  paymentMethod: 'COD' | 'BANK_TRANSFER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'MOMO';
   receiverName: string;
   receiverPhone: string;
   /** Email nhan thong bao don hang — null cho don dat truoc khi co tinh nang nay. */
@@ -141,6 +141,10 @@ export interface Order {
   cancelReason: string | null;
   /** BE tinh san, FE khong tu suy luan tu status. */
   cancellable: boolean;
+  /** Chi co ngay sau khi tao don MOMO — link chuyen huong toi trang thanh toan MoMo. */
+  payUrl?: string | null;
+  /** Chi co ngay sau khi tao don MOMO neu MoMo tu choi tao thanh toan. */
+  payError?: string | null;
 }
 
 export interface CreateOrderRequest {
@@ -153,7 +157,7 @@ export interface CreateOrderRequest {
   email: string;
   shippingAddress: string;
   note?: string;
-  paymentMethod: 'COD' | 'BANK_TRANSFER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'MOMO';
 }
 
 // ---------------------------------------------------------------------

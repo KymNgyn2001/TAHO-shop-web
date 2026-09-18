@@ -112,6 +112,13 @@ export default function OrderDetailPage() {
         </div>
       )}
 
+      {order.paymentMethod === 'MOMO' && order.status === 'PENDING' && (
+        <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+          Đơn đang chờ thanh toán qua ví MoMo. Nếu bạn đã thanh toán mà đơn chưa tự chuyển sang
+          "Đã xác nhận", hãy đợi ít phút hoặc liên hệ shop giúp mình nhé.
+        </div>
+      )}
+
       <div className="order-detail__list">
         {order.items.map((i, idx) => (
           <div className="order-detail__row" key={idx}>

@@ -22,7 +22,7 @@ type OrderForEmail = {
   receiverName: string;
   receiverPhone: string;
   shippingAddress: string;
-  paymentMethod: 'COD' | 'BANK_TRANSFER';
+  paymentMethod: 'COD' | 'BANK_TRANSFER' | 'MOMO';
   subtotal: number;
   shippingFee: number;
   discountAmount: number;
@@ -75,7 +75,9 @@ function buildOrderEmailHtml(order: OrderForEmail): string {
       <div style="margin-top:20px;padding-top:16px;border-top:1px solid #eee;font-size:13px;color:#666;">
         <p style="margin:0 0 4px;"><strong>Người nhận:</strong> ${order.receiverName} · ${order.receiverPhone}</p>
         <p style="margin:0;"><strong>Địa chỉ:</strong> ${order.shippingAddress}</p>
-        <p style="margin:8px 0 0;"><strong>Thanh toán:</strong> ${order.paymentMethod === 'COD' ? 'Tiền mặt khi nhận hàng' : 'Chuyển khoản ngân hàng'}</p>
+        <p style="margin:8px 0 0;"><strong>Thanh toán:</strong> ${
+          order.paymentMethod === 'COD' ? 'Tiền mặt khi nhận hàng' : order.paymentMethod === 'MOMO' ? 'Ví MoMo' : 'Chuyển khoản ngân hàng'
+        }</p>
       </div>
     </div>
     <div style="background:#f5f5f4;padding:14px 20px;text-align:center;font-size:12px;color:#888;">

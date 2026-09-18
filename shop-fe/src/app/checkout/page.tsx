@@ -12,7 +12,7 @@ import { vietQrImageUrl, bankInfo } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
-type PaymentMethod = 'COD' | 'BANK_TRANSFER';
+type PaymentMethod = 'COD' | 'BANK_TRANSFER' | 'MOMO';
 
 export default function CheckoutPage() {
   const { user } = useAuth();
@@ -109,6 +109,13 @@ export default function CheckoutPage() {
         note: note.trim() || undefined,
       });
       await refreshHeader();
+      if (order.paymentMethod === 'MOMO' && order.payUrl) {
+        window.location.href = order.payUrl;
+        return;
+      }
+      if (order.paymentMethod === 'MOMO' && order.payError) {
+        setError(`Đơn ${order.code} đã được tạo nhưng không mở được trang thanh toán MoMo (${order.payError}). Bạn xem đơn để thử lại hoặc liên hệ shop.`);
+      }
       setPlacedOrder(order);
     } catch (e) {
       setError(e instanceof ApiException ? e.message : 'Đặt hàng không thành công.');
@@ -125,9 +132,12 @@ export default function CheckoutPage() {
           <p>
             Mã đơn của bạn là <strong>{placedOrder.code}</strong>. Tổng tiền{' '}
             <strong>{vnd(placedOrder.totalAmount)}</strong>, thanh toán bằng{' '}
-            {placedOrder.paymentMethod === 'COD' ? 'tiền mặt khi nhận hàng' : 'chuyển khoản ngân hàng'}.
+            {placedOrder.paymentMethod === 'COD'
+              ? 'tiền mặt khi nhận hàng'
+              : placedOrder.paymentMethod === 'MOMO' ? 'ví MoMo' : 'chuyển khoản ngân hàng'}.
             {placedOrder.email && <> Mình đã gửi thông tin đơn hàng tới <strong>{placedOrder.email}</strong>.</>}
           </p>
+          {error && <p className="error-bar">{error}</p>}
           {placedOrder.paymentMethod === 'BANK_TRANSFER' && (
             <div className="bank-qr">
               <p className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
@@ -265,10 +275,24 @@ export default function CheckoutPage() {
               >
                 <span className="option-card__title">Chuyển khoản ngân hàng</span>
               </div>
+              <div
+                className="option-card"
+                role="button" tabIndex={0}
+                aria-pressed={payment === 'MOMO'}
+                onClick={() => setPayment('MOMO')}
+                onKeyDown={(e) => e.key === 'Enter' && setPayment('MOMO')}
+              >
+                <span className="option-card__title">Ví MoMo</span>
+              </div>
             </div>
             {payment === 'BANK_TRANSFER' && (
               <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '0.75rem' }}>
                 Sau khi đặt hàng, thông tin chuyển khoản sẽ hiện ở trang chi tiết đơn hàng.
+              </p>
+            )}
+            {payment === 'MOMO' && (
+              <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '0.75rem' }}>
+                Sau khi bấm "Đặt hàng", bạn sẽ được chuyển sang trang thanh toán MoMo (môi trường thử nghiệm).
               </p>
             )}
           </section>

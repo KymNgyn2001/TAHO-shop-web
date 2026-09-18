@@ -10,6 +10,10 @@ import { useRequireRole } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
+const PAYMENT_VI: Record<string, string> = {
+  COD: 'COD', BANK_TRANSFER: 'Chuyển khoản', MOMO: 'Ví MoMo',
+};
+
 const STATUS_VI: Record<string, string> = {
   PENDING: 'Chờ xác nhận',
   CONFIRMED: 'Đã xác nhận',
@@ -99,7 +103,7 @@ export default function AdminOrdersPage() {
                     <tr key={o.code}>
                       <td><Link href={`/orders/${o.code}`}>{o.code}</Link></td>
                       <td>{o.receiverName}</td>
-                      <td>{o.paymentMethod === 'COD' ? 'COD' : 'Chuyển khoản'}</td>
+                      <td>{PAYMENT_VI[o.paymentMethod] ?? o.paymentMethod}</td>
                       <td className="num">{vnd(o.totalAmount)}</td>
                       <td><span className="pill" data-s={o.status}>{STATUS_VI[o.status]}</span></td>
                       <td>{new Date(o.createdAt).toLocaleDateString('vi-VN')}</td>

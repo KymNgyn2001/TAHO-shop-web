@@ -26,6 +26,7 @@ enum OrderStatus {
 enum PaymentMethod {
   COD
   BANK_TRANSFER
+  MOMO
 }
 
 enum CreatedBy {
