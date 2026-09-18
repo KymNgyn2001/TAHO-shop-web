@@ -81,7 +81,7 @@ export default function AdminCategoriesPage() {
               {CATEGORY_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
             </select>
           </div>
-          <button type="button" className="chip" style={{ height: 40 }} onClick={add} disabled={busy || !name.trim()}>
+          <button type="button" className="chip chip--solid" style={{ height: 40 }} onClick={add} disabled={busy || !name.trim()}>
             <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm
           </button>
         </div>

@@ -444,7 +444,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
             />
           </div>
           <button
-            type="button" className="chip" style={{ height: 40 }}
+            type="button" className="chip chip--solid" style={{ height: 40 }}
             onClick={addCategory} disabled={addingCat || !newCat.trim()}
           >
             <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm
@@ -540,7 +540,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
             </div>
           ))}
         </div>
-        <button type="button" className="chip" style={{ marginTop: '0.85rem' }} onClick={() => setColors((p) => [...p, newColor()])}>
+        <button type="button" className="chip chip--solid" style={{ marginTop: '0.85rem' }} onClick={() => setColors((p) => [...p, newColor()])}>
           <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm màu
         </button>
       </section>

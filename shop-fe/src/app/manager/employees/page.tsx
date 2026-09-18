@@ -100,7 +100,7 @@ export default function ManagerEmployeesPage() {
           Tự động sinh mật khẩu
         </label>
         <button
-          type="button" className="chip"
+          type="button" className="chip chip--solid"
           onClick={create}
           disabled={creating || !name.trim() || !email.trim() || (!autoPassword && password.length < 6)}
         >

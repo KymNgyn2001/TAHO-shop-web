@@ -65,7 +65,7 @@ export default function AdminProductsPage() {
     <div className="wrap admin">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Sản phẩm</h1>
-        <Link href="/admin/products/new" className="chip">
+        <Link href="/admin/products/new" className="chip chip--solid">
           <Plus size={14} style={{ verticalAlign: '-2px' }} /> Đăng sản phẩm mới
         </Link>
       </div>

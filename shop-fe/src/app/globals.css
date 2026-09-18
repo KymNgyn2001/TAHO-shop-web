@@ -220,12 +220,28 @@ button { font: inherit; cursor: pointer; }
   font-size: var(--step--1); color: var(--muted);
 }
 .chip {
+  display: inline-flex; align-items: center; justify-content: center; gap: 0.4rem;
   border: 1px solid var(--line); background: transparent;
-  padding: 0.3rem 0.7rem; border-radius: 999px;
-  font-size: var(--step--1); color: var(--ink);
+  padding: 0.45rem 0.9rem; border-radius: 999px;
+  font-size: var(--step--1); line-height: 1;
+  color: var(--ink); cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
 }
-.chip:hover { border-color: var(--ink); }
+.chip svg { flex-shrink: 0; }
+.chip:hover { border-color: var(--ink); background: var(--wash); }
+.chip:disabled {
+  border-color: var(--line); color: var(--muted); background: transparent; cursor: not-allowed;
+}
 .chip-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.875rem; }
+
+/* Chip dung cho hanh dong tao/them CHINH cua 1 khu vuc (VD "Tao tai khoan",
+   "Dang san pham moi") — can noi bat hon chip phu (huy/xem them/ap dung...). */
+.chip--solid {
+  border-color: var(--ink); background: var(--ink); color: var(--paper);
+  font-weight: 500; padding: 0.6rem 1.15rem;
+}
+.chip--solid:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.chip--solid:disabled { background: var(--line); border-color: var(--line); color: var(--muted); }
 
 .dropzone-on {
   background: var(--wash);
