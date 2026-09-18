@@ -60,6 +60,8 @@ export interface ProductCard {
   primaryImageUrl: string | null;
   categoryName: string | null;
   audience: Audience;
+  /** false = nhan vien da an, khong hien cong khai nua. */
+  active: boolean;
   /** Chi co khi tra ve tu /search/semantic hoac /recommend. 0..1 */
   score?: number;
 }

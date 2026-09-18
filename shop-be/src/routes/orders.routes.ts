@@ -33,6 +33,12 @@ const createOrderSchema = z.object({
 
 ordersRouter.post(
   '/orders',
+  (req, _res, next) => {
+    if (isStaff(req.userRole)) {
+      return next(Errors.forbidden('Tai khoan nhan vien khong dung chuc nang mua hang.'));
+    }
+    next();
+  },
   asyncHandler(async (req, res) => {
     const body = createOrderSchema.parse(req.body);
 

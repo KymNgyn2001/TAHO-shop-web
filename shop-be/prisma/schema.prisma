@@ -85,6 +85,9 @@ model Product {
   sizeChartUrl String?
   audience     Audience @default(UNISEX)
   viewCount    Int      @default(0)
+  /** Nhan vien an san pham (VD het hang lau dai) — van con du lieu don cu, chi
+   * khong hien trong tim kiem/danh sach cong khai nua. */
+  active       Boolean  @default(true)
   createdAt    DateTime @default(now())
 
   images       ProductImage[]

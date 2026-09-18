@@ -8,12 +8,15 @@ import type { ProductCard, ProductDetail } from '@/lib/api-contract';
 import ProductGrid from '@/components/ProductGrid';
 import ReviewSection from '@/components/ReviewSection';
 import { useCart } from '@/lib/cart-context';
+import { useAuth, isStaffRole } from '@/lib/auth-context';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
 export default function ProductPage() {
   const { slug } = useParams<{ slug: string }>();
   const { refresh: refreshCart } = useCart();
+  const { user } = useAuth();
+  const isStaff = isStaffRole(user?.role);
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [similar, setSimilar] = useState<ProductCard[]>([]);
@@ -207,22 +210,26 @@ export default function ProductPage() {
             <img src={product.sizeChartUrl} alt="Bảng size" style={{ width: '100%', marginBottom: '1.25rem' }} />
           )}
 
-          <button
-            type="button"
-            className="btn-primary"
-            disabled={!selected?.inStock || adding}
-            onClick={addToCart}
-          >
-            {adding
-              ? 'Đang thêm…'
-              : added
-                ? 'Đã thêm vào giỏ'
-                : !selected
-                  ? 'Chọn màu và size'
-                  : !selected.inStock
-                    ? 'Hết hàng'
-                    : 'Thêm vào giỏ'}
-          </button>
+          {isStaff ? (
+            <p className="stock-note">Tài khoản nhân viên không dùng chức năng mua hàng.</p>
+          ) : (
+            <button
+              type="button"
+              className="btn-primary"
+              disabled={!selected?.inStock || adding}
+              onClick={addToCart}
+            >
+              {adding
+                ? 'Đang thêm…'
+                : added
+                  ? 'Đã thêm vào giỏ'
+                  : !selected
+                    ? 'Chọn màu và size'
+                    : !selected.inStock
+                      ? 'Hết hàng'
+                      : 'Thêm vào giỏ'}
+            </button>
+          )}
 
           {selected?.inStock && selected.stockQty <= 5 && (
             <p className="stock-note">

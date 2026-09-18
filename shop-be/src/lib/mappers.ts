@@ -49,6 +49,7 @@ export function toProductCard(p: ProductWithRelations, score?: number) {
     primaryImageUrl: primaryImageUrl(p.images),
     categoryName: p.category?.name ?? null,
     audience: p.audience,
+    active: p.active,
     ...(score !== undefined ? { score } : {}),
   };
 }

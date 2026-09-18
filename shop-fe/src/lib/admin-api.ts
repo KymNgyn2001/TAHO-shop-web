@@ -213,6 +213,7 @@ export const adminApi = {
       primaryImageUrl: body.images[0]?.url ?? null,
       categoryName: category?.name ?? null,
       audience: body.audience ?? 'UNISEX',
+      active: true,
       description: body.description ?? null,
       brand: body.brand ?? null,
       material: body.material ?? null,
@@ -232,10 +233,21 @@ export const adminApi = {
       primaryImageUrl: body.images[0]?.url ?? null,
       categoryName: category?.name ?? null,
       audience: body.audience ?? 'UNISEX',
+      active: true,
       description: body.description ?? null,
       brand: body.brand ?? null,
       material: body.material ?? null,
       sizeChartUrl: body.sizeChartImageUrl ?? null,
+    };
+  },
+
+  async toggleProductActive(id: number, active: boolean): Promise<ProductCard> {
+    if (!USE_MOCK) {
+      return request(`/api/admin/products/${id}/active`, { method: 'PATCH', body: JSON.stringify({ active }) });
+    }
+    await delay(300);
+    return {
+      id, name: '', slug: '', basePrice: 0, primaryImageUrl: null, categoryName: null, audience: 'UNISEX', active,
     };
   },
 

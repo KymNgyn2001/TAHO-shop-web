@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, ChevronDown, Search, User } from 'lucide-react';
-import { useAuth, roleLabel } from '@/lib/auth-context';
+import { useAuth, roleLabel, isStaffRole } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { api, type Category, type CategoryGroup } from '@/lib/api-client';
 
@@ -139,10 +139,12 @@ export default function SiteHeader() {
             )}
           </div>
 
-          <Link href="/cart" className="cart-link" aria-label="Giỏ hàng">
-            <ShoppingBag size={20} strokeWidth={1.5} />
-            {count > 0 && <span className="cart-count">{count > 99 ? '99+' : count}</span>}
-          </Link>
+          {!isStaffRole(user?.role) && (
+            <Link href="/cart" className="cart-link" aria-label="Giỏ hàng">
+              <ShoppingBag size={20} strokeWidth={1.5} />
+              {count > 0 && <span className="cart-count">{count > 99 ? '99+' : count}</span>}
+            </Link>
+          )}
 
           {loading ? null : user ? (
             <div className="user-menu">

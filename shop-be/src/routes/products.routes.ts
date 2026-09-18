@@ -15,6 +15,10 @@ export const productsRouter = Router();
 
 const productInclude = { images: true, category: true } as const;
 
+function isStaff(role: string | undefined): boolean {
+  return role === 'EMPLOYEE' || role === 'MANAGER';
+}
+
 productsRouter.get(
   '/products',
   asyncHandler(async (req, res) => {
@@ -24,7 +28,13 @@ productsRouter.get(
     const audienceParam = req.query.audience as string | undefined;
     const audience = audienceParam && AUDIENCES.has(audienceParam as Audience) ? (audienceParam as Audience) : undefined;
 
-    const where = { ...(categoryId ? { categoryId } : {}), ...(audience ? { audience } : {}) };
+    // Khach hang chi thay san pham dang ban — nhan vien/quan ly (VD dang o trang
+    // quan tri) thay ca san pham da an de con quan ly duoc.
+    const where = {
+      ...(categoryId ? { categoryId } : {}),
+      ...(audience ? { audience } : {}),
+      ...(isStaff(req.userRole) ? {} : { active: true }),
+    };
     const [items, totalItems] = await Promise.all([
       prisma.product.findMany({
         where,
@@ -54,6 +64,7 @@ productsRouter.get(
       include: { ...productInclude, variants: true },
     });
     if (!product) throw Errors.notFound('San pham khong con nua.');
+    if (!product.active && !isStaff(req.userRole)) throw Errors.notFound('San pham khong con nua.');
 
     await prisma.product.update({ where: { id: product.id }, data: { viewCount: { increment: 1 } } });
 
@@ -70,7 +81,7 @@ productsRouter.get(
     if (!product) throw Errors.notFound();
 
     const items = await prisma.product.findMany({
-      where: { categoryId: product.categoryId, id: { not: id } },
+      where: { categoryId: product.categoryId, id: { not: id }, active: true },
       include: productInclude,
       take: limit,
     });
@@ -83,6 +94,7 @@ productsRouter.get(
   asyncHandler(async (req, res) => {
     const limit = Math.min(24, Number(req.query.limit ?? 8));
     const items = await prisma.product.findMany({
+      where: { active: true },
       include: productInclude,
       orderBy: { viewCount: 'desc' },
       take: limit,
@@ -251,6 +263,26 @@ productsRouter.patch(
       include: { ...productInclude, variants: true },
     });
     res.json(toProductDetail(updated));
+  }),
+);
+
+const toggleActiveSchema = z.object({ active: z.boolean() });
+
+productsRouter.patch(
+  '/admin/products/:id/active',
+  requireRole('EMPLOYEE', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const id = Number(req.params.id);
+    const body = toggleActiveSchema.parse(req.body);
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing) throw Errors.notFound('Khong tim thay san pham.');
+
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { active: body.active },
+      include: productInclude,
+    });
+    res.json(toProductCard(updated));
   }),
 );
 

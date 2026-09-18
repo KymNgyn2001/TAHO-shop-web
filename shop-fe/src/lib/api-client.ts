@@ -33,6 +33,7 @@ type ProductDetail = {
   primaryImageUrl: string;
   categoryName: string;
   audience: Audience;
+  active: boolean;
   description: string;
   brand: string;
   material: string;
@@ -43,7 +44,7 @@ type ProductDetail = {
 
 type ProductCard = Pick<
   ProductDetail,
-  'id' | 'name' | 'slug' | 'basePrice' | 'primaryImageUrl' | 'categoryName' | 'audience'
+  'id' | 'name' | 'slug' | 'basePrice' | 'primaryImageUrl' | 'categoryName' | 'audience' | 'active'
 > & {
   score?: number;
 };
@@ -321,7 +322,7 @@ const img = (seed: string) => `https://picsum.photos/seed/${seed}/600/800`;
 export const MOCK_PRODUCTS: ProductDetail[] = [
   {
     id: 1, name: 'Áo sơ mi linen tay dài', slug: 'ao-so-mi-linen-tay-dai',
-    basePrice: 459000, primaryImageUrl: img('linen1'), categoryName: 'Áo sơ mi', audience: 'UNISEX',
+    basePrice: 459000, primaryImageUrl: img('linen1'), categoryName: 'Áo sơ mi', audience: 'UNISEX', active: true,
     description: 'Linen pha cotton, form suông, ít nhăn hơn linen nguyên chất.',
     brand: 'Local Studio', material: 'Linen 70% / Cotton 30%', sizeChartUrl: null,
     images: [
@@ -336,7 +337,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 2, name: 'Quần âu ống suông', slug: 'quan-au-ong-suong',
-    basePrice: 620000, primaryImageUrl: img('trouser1'), categoryName: 'Quần', audience: 'MEN',
+    basePrice: 620000, primaryImageUrl: img('trouser1'), categoryName: 'Quần', audience: 'MEN', active: true,
     description: 'Ống suông, cạp cao, có ly. Vải tuyết mưa ít nhăn.',
     brand: 'Local Studio', material: 'Polyester 65% / Viscose 35%', sizeChartUrl: null,
     images: [{ url: img('trouser1'), altText: null, isPrimary: true, color: null }],
@@ -347,7 +348,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 3, name: 'Áo thun cotton bo gân', slug: 'ao-thun-cotton-bo-gan',
-    basePrice: 249000, primaryImageUrl: img('tee1'), categoryName: 'Áo thun', audience: 'UNISEX',
+    basePrice: 249000, primaryImageUrl: img('tee1'), categoryName: 'Áo thun', audience: 'UNISEX', active: true,
     description: 'Cotton 100% dệt bo gân, dày dặn, không xuyên thấu.',
     brand: 'Basics', material: 'Cotton 100%', sizeChartUrl: null,
     images: [{ url: img('tee1'), altText: null, isPrimary: true, color: null }],
@@ -358,7 +359,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 4, name: 'Chân váy xếp ly midi', slug: 'chan-vay-xep-ly-midi',
-    basePrice: 535000, primaryImageUrl: img('skirt1'), categoryName: 'Chân váy', audience: 'WOMEN',
+    basePrice: 535000, primaryImageUrl: img('skirt1'), categoryName: 'Chân váy', audience: 'WOMEN', active: true,
     description: 'Dài qua gối, ly giữ nếp sau nhiều lần giặt.',
     brand: 'Local Studio', material: 'Polyester 100%', sizeChartUrl: null,
     images: [{ url: img('skirt1'), altText: null, isPrimary: true, color: null }],
@@ -368,7 +369,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 5, name: 'Áo khoác blazer một lớp', slug: 'ao-khoac-blazer-mot-lop',
-    basePrice: 890000, primaryImageUrl: img('blazer1'), categoryName: 'Áo khoác', audience: 'WOMEN',
+    basePrice: 890000, primaryImageUrl: img('blazer1'), categoryName: 'Áo khoác', audience: 'WOMEN', active: true,
     description: 'Không lót, mặc được mùa nóng. Vai nhẹ, không độn dày.',
     brand: 'Local Studio', material: 'Linen 55% / Viscose 45%', sizeChartUrl: null,
     images: [{ url: img('blazer1'), altText: null, isPrimary: true, color: null }],
@@ -378,7 +379,7 @@ export const MOCK_PRODUCTS: ProductDetail[] = [
   },
   {
     id: 6, name: 'Đầm lụa cổ vuông', slug: 'dam-lua-co-vuong',
-    basePrice: 720000, primaryImageUrl: img('dress1'), categoryName: 'Đầm', audience: 'WOMEN',
+    basePrice: 720000, primaryImageUrl: img('dress1'), categoryName: 'Đầm', audience: 'WOMEN', active: true,
     description: 'Lụa nhân tạo mềm rủ, cổ vuông, tay ngắn.',
     brand: 'Local Studio', material: 'Viscose 100%', sizeChartUrl: null,
     images: [{ url: img('dress1'), altText: null, isPrimary: true, color: null }],
@@ -399,7 +400,7 @@ let mockReviewSeq = 1;
 
 const toCard = (p: ProductDetail): ProductCard => ({
   id: p.id, name: p.name, slug: p.slug, basePrice: p.basePrice,
-  primaryImageUrl: p.primaryImageUrl, categoryName: p.categoryName, audience: p.audience,
+  primaryImageUrl: p.primaryImageUrl, categoryName: p.categoryName, audience: p.audience, active: p.active,
 });
 
 const MOCK_CATEGORIES: Category[] = [

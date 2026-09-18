@@ -3,9 +3,10 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
 import type { Cart, Order, ShippingMethod } from '@/lib/api-contract';
-import { useAuth } from '@/lib/auth-context';
+import { useAuth, isStaffRole } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { vietQrImageUrl, bankInfo } from '@/lib/bankQr';
 
@@ -15,7 +16,12 @@ type PaymentMethod = 'COD' | 'BANK_TRANSFER';
 
 export default function CheckoutPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const { refresh: refreshHeader } = useCart();
+
+  useEffect(() => {
+    if (isStaffRole(user?.role)) router.replace('/');
+  }, [user, router]);
 
   const [cart, setCart] = useState<Cart | null>(null);
   const [methods, setMethods] = useState<ShippingMethod[]>([]);
@@ -152,6 +158,8 @@ export default function CheckoutPage() {
       </div>
     );
   }
+
+  if (isStaffRole(user?.role)) return null;
 
   if (!cart) return <div className="wrap checkout"><div className="skeleton" style={{ height: 300 }} /></div>;
 

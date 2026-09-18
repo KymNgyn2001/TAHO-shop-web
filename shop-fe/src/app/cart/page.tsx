@@ -3,22 +3,32 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Minus, Plus, ShoppingBag } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
 import type { Cart } from '@/lib/api-contract';
+import { useAuth, isStaffRole } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
 export default function CartPage() {
+  const { user } = useAuth();
+  const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<number | null>(null);
   const { refresh: refreshHeader } = useCart();
 
   useEffect(() => {
+    if (isStaffRole(user?.role)) router.replace('/');
+  }, [user, router]);
+
+  useEffect(() => {
     api.getCart().then(setCart).catch(() => setError('Không tải được giỏ hàng.'));
   }, []);
+
+  if (isStaffRole(user?.role)) return null;
 
   async function changeQty(itemId: number, quantity: number) {
     setError(null);

@@ -28,6 +28,9 @@ const YES_WORDS = ['dong y', 'xac nhan', 'ok', 'oke', 'okie', 'duoc', 'chot', 'u
 const NO_WORDS = ['khong dong y', 'khong', 'huy', 'thoi', 'k'];
 const DELETE_TRIGGER = ['xoa san pham', 'xoa'];
 const REPORT_TRIGGER = ['bao cao', 'doanh thu', 'tong ket', 'thong ke'];
+const HIDE_TRIGGER = ['an san pham', 'ngung ban', 'tam ngung ban'];
+const SHOW_TRIGGER = ['hien san pham', 'mo ban lai', 'ban lai san pham', 'kich hoat lai'];
+const STOCK_TRIGGER = ['cap nhat ton kho', 'sua ton kho', 'chinh ton kho', 'them ton kho'];
 
 function hasAnyFlat(flat: string, words: string[]): boolean {
   return words.some((w) => flat.includes(w));
@@ -65,6 +68,16 @@ function isStaff(role: string | undefined): boolean {
   return role === 'EMPLOYEE' || role === 'MANAGER';
 }
 
+/** Lay so muc tieu trong cau lenh cap nhat ton kho — uu tien so ngay sau
+ * "thanh"/"len"/"la"/"con lai", khong thi lay so cuoi cung (tranh nham voi "2xl"/"3xl"). */
+function extractQuantity(flat: string): number | null {
+  const explicit = /(?:thanh|len|la|con lai)\s*(\d+)\b/.exec(flat);
+  if (explicit) return parseInt(explicit[1], 10);
+  const all = [...flat.matchAll(/(\d+)(?!xl)\b/g)];
+  if (all.length > 0) return parseInt(all[all.length - 1][1], 10);
+  return null;
+}
+
 const pendingConfirmSchema = z.union([
   z.object({
     kind: z.literal('ADD_TO_CART'),
@@ -78,6 +91,20 @@ const pendingConfirmSchema = z.union([
     kind: z.literal('DELETE_PRODUCT'),
     productId: z.number().int().positive(),
     productName: z.string(),
+  }),
+  z.object({
+    kind: z.literal('TOGGLE_ACTIVE'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    active: z.boolean(),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_STOCK'),
+    variantId: z.number().int().positive(),
+    quantity: z.number().int().min(0),
+    productName: z.string(),
+    size: z.string(),
+    color: z.string(),
   }),
 ]);
 
@@ -125,6 +152,14 @@ chatRouter.post(
           });
         }
 
+        if (pending.kind === 'ADD_TO_CART' && isStaff(req.userRole)) {
+          return res.json({
+            role: 'assistant',
+            content: 'Tài khoản nhân viên không dùng chức năng mua hàng/thêm giỏ hàng nhé.',
+            context: restContext,
+          });
+        }
+
         if (pending.kind === 'ADD_TO_CART') {
           try {
             const cart = await resolveCart(req);
@@ -164,6 +199,26 @@ chatRouter.post(
               context: restContext,
             });
           }
+        }
+
+        if (pending.kind === 'TOGGLE_ACTIVE' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { active: pending.active } });
+          return res.json({
+            role: 'assistant',
+            content: pending.active
+              ? `Mình đã hiện lại sản phẩm "${pending.productName}" để bán công khai.`
+              : `Mình đã ẩn sản phẩm "${pending.productName}" — khách sẽ không thấy sản phẩm này nữa.`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_STOCK' && isStaff(req.userRole)) {
+          await prisma.variant.update({ where: { id: pending.variantId }, data: { stockQty: pending.quantity } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã cập nhật tồn kho "${pending.productName}" — màu ${pending.color}, size ${pending.size} thành ${pending.quantity}.`,
+            context: restContext,
+          });
         }
 
         return res.json({ role: 'assistant', content: 'Mình chưa xử lý được yêu cầu này.', context: restContext });
@@ -291,7 +346,126 @@ chatRouter.post(
       });
     }
 
+    // ---------- 4b. An/hien san pham (chi EMPLOYEE/MANAGER) ----------
+    if (isStaff(req.userRole) && (hasAnyFlat(flat, HIDE_TRIGGER) || hasAnyFlat(flat, SHOW_TRIGGER))) {
+      const wantsShow = hasAnyFlat(flat, SHOW_TRIGGER);
+      const triggerWords = wantsShow ? SHOW_TRIGGER : HIDE_TRIGGER;
+      const nameOnly = triggerWords.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), lower);
+      const products = await prisma.product.findMany({ include: productInclude });
+      const ranked = products
+        .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
+        .filter((r) => r.score >= DELETE_MATCH_SCORE)
+        .sort((a, b) => b.score - a.score);
+
+      if (ranked.length === 0) {
+        return res.json({
+          role: 'assistant',
+          content: 'Mình chưa xác định được sản phẩm nào, bạn nói rõ tên sản phẩm giúp mình nhé.',
+          context,
+        });
+      }
+      if (ranked.length > 1 && ranked[0].score - ranked[1].score < 0.15) {
+        return res.json({
+          role: 'assistant',
+          content: 'Có vài sản phẩm trùng tên, bạn chọn đúng mẫu giúp mình:',
+          products: ranked.slice(0, 3).map((r) => toProductCard(r.product)),
+          context,
+        });
+      }
+
+      const target = ranked[0].product;
+      return res.json({
+        role: 'assistant',
+        content: wantsShow
+          ? `Xác nhận hiện lại sản phẩm "${target.name}" để bán công khai?`
+          : `Xác nhận ẩn sản phẩm "${target.name}"? Khách sẽ không thấy sản phẩm này nữa (vẫn giữ nguyên dữ liệu, có thể hiện lại bất cứ lúc nào).`,
+        confirm: true,
+        context: { ...context, pendingConfirm: { kind: 'TOGGLE_ACTIVE', productId: target.id, productName: target.name, active: wantsShow } },
+      });
+    }
+
+    // ---------- 4c. Cap nhat ton kho (chi EMPLOYEE/MANAGER) ----------
+    if (isStaff(req.userRole) && hasAnyFlat(flat, STOCK_TRIGGER)) {
+      const quantity = extractQuantity(flat);
+      if (quantity == null) {
+        return res.json({
+          role: 'assistant',
+          content: 'Bạn muốn cập nhật tồn kho thành bao nhiêu? Nhắn kiểu "cập nhật tồn kho áo thun TAHO màu đen size M thành 20" giúp mình nhé.',
+          context,
+        });
+      }
+
+      const nameOnly = STOCK_TRIGGER.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), flat)
+        .replace(/\bsize\s*\w+\b/gi, ' ')
+        .replace(/(?:thanh|len|la|con lai)\s*\d+\b/gi, ' ')
+        .replace(/\bmau\b/gi, ' ');
+      const products = await prisma.product.findMany({ include: { ...productInclude, variants: true } });
+      const ranked = products
+        .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
+        .filter((r) => r.score >= DELETE_MATCH_SCORE)
+        .sort((a, b) => b.score - a.score);
+
+      if (ranked.length === 0) {
+        return res.json({
+          role: 'assistant',
+          content: 'Mình chưa xác định được sản phẩm nào, bạn nói rõ tên sản phẩm giúp mình nhé.',
+          context,
+        });
+      }
+
+      const product = ranked[0].product;
+      const availableSizes = [...new Set(product.variants.map((v) => v.size))];
+      const availableColors = [...new Set(product.variants.map((v) => v.color))];
+      const sizeToken = availableSizes.find((size) => findWholeWord(flat, stripDiacritics(size.toLowerCase())));
+      const colorToken = availableColors.find((color) => flat.includes(stripDiacritics(color.toLowerCase())));
+
+      let targetVariants = product.variants;
+      if (sizeToken) targetVariants = targetVariants.filter((v) => v.size === sizeToken);
+      if (colorToken) targetVariants = targetVariants.filter((v) => v.color.toLowerCase() === colorToken.toLowerCase());
+
+      if (targetVariants.length === 0) {
+        return res.json({
+          role: 'assistant',
+          content: `Mình không tìm thấy biến thể phù hợp cho "${product.name}", bạn kiểm tra lại size/màu giúp mình.`,
+          context,
+        });
+      }
+      if (targetVariants.length > 1) {
+        return res.json({
+          role: 'assistant',
+          content: `"${product.name}" có nhiều biến thể (size: ${availableSizes.join(', ')}; màu: ${availableColors.join(', ')}) — bạn nói rõ size và màu giúp mình nhé.`,
+          context: { ...context, productId: product.id },
+        });
+      }
+
+      const variant = targetVariants[0];
+      return res.json({
+        role: 'assistant',
+        content: `Xác nhận cập nhật tồn kho "${product.name}" — màu ${variant.color}, size ${variant.size} từ ${variant.stockQty} thành ${quantity}?`,
+        confirm: true,
+        context: {
+          ...context,
+          pendingConfirm: {
+            kind: 'UPDATE_STOCK',
+            variantId: variant.id,
+            quantity,
+            productName: product.name,
+            size: variant.size,
+            color: variant.color,
+          },
+        },
+      });
+    }
+
     // ---------- 5. Y dinh mua hang ----------
+    if (isStaff(req.userRole) && hasAnyFlat(flat, BUY_VERBS)) {
+      return res.json({
+        role: 'assistant',
+        content: 'Tài khoản nhân viên không dùng chức năng mua hàng/thêm giỏ hàng nhé.',
+        context,
+      });
+    }
+
     if (hasAnyFlat(flat, BUY_VERBS)) {
       let productId = context.productId;
 
@@ -343,10 +517,20 @@ chatRouter.post(
               ? context.recommendedSize
               : undefined);
 
+          const distinctColors = [...new Set(product.variants.map((v) => v.color))];
+
           if (sizeToken) {
-            const colorToken = [...new Set(product.variants.map((v) => v.color))].find((color) =>
-              flat.includes(stripDiacritics(color.toLowerCase())),
-            );
+            const colorToken = distinctColors.find((color) => flat.includes(stripDiacritics(color.toLowerCase())));
+
+            // Nhieu mau ma khach chua noi ro mau nao -> hoi lai thay vi tu doan dai mau dau tien.
+            if (!colorToken && distinctColors.length > 1) {
+              return res.json({
+                role: 'assistant',
+                content: `"${product.name}" size ${sizeToken} có mấy màu: ${distinctColors.join(', ')}. Bạn lấy màu nào?`,
+                context: { ...context, productId: product.id, recommendedSize: sizeToken },
+              });
+            }
+
             const candidates = product.variants.filter(
               (v) => v.size === sizeToken && (!colorToken || v.color.toLowerCase() === colorToken.toLowerCase()),
             );
@@ -362,10 +546,46 @@ chatRouter.post(
                 context,
               });
             }
+
+            if (variant.stockQty === 0) {
+              const variantsInStock = product.variants.filter((v) => v.stockQty > 0);
+              const sameSizeColors = [...new Set(
+                variantsInStock.filter((v) => v.size === variant.size).map((v) => v.color),
+              )];
+              const sameColorSizes = [...new Set(
+                variantsInStock.filter((v) => v.color.toLowerCase() === variant.color.toLowerCase()).map((v) => v.size),
+              )];
+
+              let content = `"${product.name}" màu ${variant.color} size ${variant.size} hiện đã hết hàng.`;
+              if (sameSizeColors.length > 0) content += ` Size ${variant.size} vẫn còn màu: ${sameSizeColors.join(', ')}.`;
+              if (sameColorSizes.length > 0) content += ` Màu ${variant.color} vẫn còn size: ${sameColorSizes.join(', ')}.`;
+
+              if (variantsInStock.length === 0) {
+                // San pham nay het sach moi mau/size -> tim mau tuong tu cung danh muc con hang.
+                const altCandidates = await prisma.product.findMany({
+                  where: { categoryId: product.categoryId, id: { not: product.id }, active: true },
+                  include: { ...productInclude, variants: true },
+                });
+                const altWithStock = altCandidates.filter((p) => p.variants.some((v) => v.stockQty > 0));
+                if (altWithStock.length > 0) {
+                  content += ' Sản phẩm này hết hàng toàn bộ rồi, bạn xem thử mấy mẫu tương tự này nhé:';
+                  return res.json({
+                    role: 'assistant',
+                    content,
+                    products: altWithStock.slice(0, 3).map((p) => toProductCard(p)),
+                    context,
+                  });
+                }
+                content += ' Sản phẩm này hết hàng toàn bộ và hiện mình chưa có mẫu tương tự khác.';
+              }
+
+              return res.json({ role: 'assistant', content, context });
+            }
+
             if (variant.stockQty < quantity) {
               return res.json({
                 role: 'assistant',
-                content: `Size ${variant.size}${variant.color ? ` màu ${variant.color}` : ''} chỉ còn ${variant.stockQty} sản phẩm thôi, bạn lấy ít hơn nhé.`,
+                content: `Màu ${variant.color} size ${variant.size} chỉ còn ${variant.stockQty} sản phẩm thôi, bạn lấy ${variant.stockQty} cái được không?`,
                 context,
               });
             }
@@ -387,6 +607,15 @@ chatRouter.post(
               },
             });
           }
+
+          // Khach chi neu ten san pham, chua noi size (va co the chua noi mau) -> nhac ro thay vi im lang.
+          return res.json({
+            role: 'assistant',
+            content: `Bạn muốn lấy "${product.name}" size nào? Hiện có size: ${availableSizes.join(', ')}${
+              distinctColors.length > 0 ? `, màu: ${distinctColors.join(', ')}` : ''
+            }.`,
+            context: { ...context, productId: product.id },
+          });
         }
       }
     }

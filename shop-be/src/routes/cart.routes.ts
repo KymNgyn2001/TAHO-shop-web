@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { NextFunction, Request, Response, Router } from 'express';
 import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
@@ -6,6 +6,14 @@ import { Errors } from '../lib/apiError';
 import { addItemToCart, loadCartPayload, resolveCart } from '../lib/cart';
 
 export const cartRouter = Router();
+
+/** Tai khoan nhan vien/quan ly khong dung chuc nang mua hang cua khach. */
+function blockStaff(req: Request, _res: Response, next: NextFunction) {
+  if (req.userRole === 'EMPLOYEE' || req.userRole === 'MANAGER') {
+    return next(Errors.forbidden('Tai khoan nhan vien khong dung chuc nang them vao gio hang.'));
+  }
+  next();
+}
 
 cartRouter.get(
   '/cart',
@@ -19,6 +27,7 @@ const addSchema = z.object({ variantId: z.number().int().positive(), quantity: z
 
 cartRouter.post(
   '/cart/items',
+  blockStaff,
   asyncHandler(async (req, res) => {
     const body = addSchema.parse(req.body);
     const cart = await resolveCart(req);

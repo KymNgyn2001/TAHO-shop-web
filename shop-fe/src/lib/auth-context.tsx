@@ -67,3 +67,8 @@ export function roleLabel(role: AuthUser['role']): string {
   if (role === 'EMPLOYEE') return 'Nhân viên';
   return 'Khách hàng';
 }
+
+/** Nhan vien/quan ly khong dung chuc nang mua hang/gio hang. */
+export function isStaffRole(role: AuthUser['role'] | undefined): boolean {
+  return role === 'EMPLOYEE' || role === 'MANAGER';
+}

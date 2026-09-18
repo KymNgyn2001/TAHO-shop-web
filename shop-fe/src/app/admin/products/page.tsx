@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Pencil, Plus, Trash2 } from 'lucide-react';
+import { Eye, EyeOff, Pencil, Plus, Trash2 } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
 import type { ProductCard } from '@/lib/api-contract';
 import { adminApi } from '@/lib/admin-api';
@@ -21,6 +21,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [togglingId, setTogglingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -30,6 +31,19 @@ export default function AdminProductsPage() {
     }
     load();
   }, [ready]);
+
+  async function toggleActive(id: number, name: string, active: boolean) {
+    setError(null);
+    setTogglingId(id);
+    try {
+      await adminApi.toggleProductActive(id, active);
+      setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, active } : p)));
+    } catch (e) {
+      setError(e instanceof ApiException ? e.message : `Không ${active ? 'hiện' : 'ẩn'} được "${name}".`);
+    } finally {
+      setTogglingId(null);
+    }
+  }
 
   async function remove(id: number, name: string) {
     if (!confirm(`Xoá sản phẩm "${name}"? Không thể hoàn tác.`)) return;
@@ -67,7 +81,7 @@ export default function AdminProductsPage() {
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th /><th>Tên</th><th>Danh mục</th><th>Đối tượng</th><th className="num">Giá</th><th /></tr>
+                <tr><th /><th>Tên</th><th>Danh mục</th><th>Đối tượng</th><th className="num">Giá</th><th>Trạng thái</th><th /></tr>
               </thead>
               <tbody>
                 {products.map((p) => (
@@ -83,10 +97,24 @@ export default function AdminProductsPage() {
                     <td>{p.categoryName ?? '—'}</td>
                     <td>{AUDIENCE_VI[p.audience] ?? p.audience}</td>
                     <td className="num">{vnd(p.basePrice)}</td>
+                    <td>
+                      <span className="pill" data-s={p.active ? 'COMPLETED' : 'CANCELLED'}>
+                        {p.active ? 'Đang bán' : 'Đã ẩn'}
+                      </span>
+                    </td>
                     <td style={{ display: 'flex', gap: '0.25rem' }}>
                       <Link href={`/admin/products/${p.slug}/edit`} className="icon-btn" aria-label={`Sửa ${p.name}`}>
                         <Pencil size={14} />
                       </Link>
+                      <button
+                        type="button" className="icon-btn"
+                        aria-label={p.active ? `Ẩn ${p.name}` : `Hiện ${p.name}`}
+                        title={p.active ? 'Ẩn sản phẩm' : 'Hiện sản phẩm'}
+                        disabled={togglingId === p.id}
+                        onClick={() => toggleActive(p.id, p.name, !p.active)}
+                      >
+                        {p.active ? <EyeOff size={14} /> : <Eye size={14} />}
+                      </button>
                       <button
                         type="button" className="icon-btn" aria-label={`Xoá ${p.name}`}
                         disabled={deletingId === p.id}
