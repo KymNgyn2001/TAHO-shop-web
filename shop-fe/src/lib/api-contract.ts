@@ -129,6 +129,8 @@ export interface Order {
   paymentMethod: 'COD' | 'BANK_TRANSFER';
   receiverName: string;
   receiverPhone: string;
+  /** Email nhan thong bao don hang — null cho don dat truoc khi co tinh nang nay. */
+  email: string | null;
   shippingAddress: string;
   note: string | null;
   createdBy: 'WEB' | 'CHATBOT';
@@ -145,6 +147,8 @@ export interface CreateOrderRequest {
   discountCode?: string;
   receiverName: string;
   receiverPhone: string;
+  /** Dung de gui email xac nhan don hang. Bat buoc, ke ca khach vang lai. */
+  email: string;
   shippingAddress: string;
   note?: string;
   paymentMethod: 'COD' | 'BANK_TRANSFER';

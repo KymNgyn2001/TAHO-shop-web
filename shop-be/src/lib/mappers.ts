@@ -115,6 +115,7 @@ export function toOrder(
     paymentMethod: o.paymentMethod,
     receiverName: o.receiverName,
     receiverPhone: o.receiverPhone,
+    email: o.email,
     shippingAddress: o.shippingAddress,
     note: o.note,
     createdBy: o.createdBy,

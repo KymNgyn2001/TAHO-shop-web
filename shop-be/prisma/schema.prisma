@@ -180,6 +180,8 @@ model Order {
   discountCode     DiscountCode?   @relation(fields: [discountCodeId], references: [id])
   receiverName     String
   receiverPhone    String
+  /** Email nhan thong bao don hang — null cho don cu truoc khi co tinh nang nay. */
+  email            String?
   shippingAddress  String
   note             String?
   createdBy        CreatedBy       @default(WEB)

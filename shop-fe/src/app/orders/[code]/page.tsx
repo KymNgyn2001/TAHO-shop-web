@@ -138,6 +138,7 @@ export default function OrderDetailPage() {
       <dl className="detail__meta" style={{ marginTop: 0 }}>
         <dt>Người nhận</dt>
         <dd>{order.receiverName} · {order.receiverPhone}</dd>
+        {order.email && (<><dt>Email</dt><dd>{order.email}</dd></>)}
         <dt>Địa chỉ</dt>
         <dd>{order.shippingAddress}</dd>
         {order.note && (<><dt>Ghi chú</dt><dd>{order.note}</dd></>)}

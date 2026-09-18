@@ -8,6 +8,7 @@ import { nextOrderCode } from '../lib/orderCode';
 import { evaluateDiscountCode } from '../lib/discount';
 import { clearCart, resolveCart } from '../lib/cart';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { sendOrderConfirmationEmail } from '../lib/mailer';
 
 export const ordersRouter = Router();
 
@@ -23,6 +24,7 @@ const createOrderSchema = z.object({
   discountCode: z.string().optional(),
   receiverName: z.string().min(1, 'Vui long nhap ten nguoi nhan.'),
   receiverPhone: z.string().min(8, 'So dien thoai khong hop le.'),
+  email: z.string().email('Email khong hop le.'),
   shippingAddress: z.string().min(1, 'Vui long nhap dia chi giao hang.'),
   note: z.string().optional(),
   paymentMethod: z.enum(['COD', 'BANK_TRANSFER']),
@@ -111,6 +113,7 @@ ordersRouter.post(
           discountCodeId,
           receiverName: body.receiverName,
           receiverPhone: body.receiverPhone,
+          email: body.email,
           shippingAddress: body.shippingAddress,
           note: body.note,
           createdBy: 'WEB',
@@ -124,6 +127,23 @@ ordersRouter.post(
 
     const cart = await resolveCart(req).catch(() => null);
     if (cart) await clearCart(cart.id);
+
+    // Khong await — gui mail cham/loi khong duoc lam cham hay lam sap request dat hang.
+    sendOrderConfirmationEmail(order.email!, {
+      code: order.code,
+      receiverName: order.receiverName,
+      receiverPhone: order.receiverPhone,
+      shippingAddress: order.shippingAddress,
+      paymentMethod: order.paymentMethod,
+      subtotal: order.subtotal,
+      shippingFee: order.shippingFee,
+      discountAmount: order.discountAmount,
+      totalAmount: order.totalAmount,
+      shippingMethodName: order.shippingMethod?.name ?? null,
+      items: order.items.map((i) => ({
+        productName: i.productName, size: i.size, color: i.color, quantity: i.quantity, lineTotal: i.lineTotal,
+      })),
+    });
 
     res.status(201).json(toOrder(order));
   }),

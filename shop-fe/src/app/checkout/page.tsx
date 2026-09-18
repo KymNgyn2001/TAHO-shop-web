@@ -24,6 +24,7 @@ export default function CheckoutPage() {
 
   const [receiverName, setReceiverName] = useState(user?.name ?? '');
   const [receiverPhone, setReceiverPhone] = useState(user?.phone ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
   const [shippingAddress, setShippingAddress] = useState('');
   const [note, setNote] = useState('');
 
@@ -49,6 +50,7 @@ export default function CheckoutPage() {
       if (!user) return;
       setReceiverName((v) => v || user.name);
       setReceiverPhone((v) => v || user.phone || '');
+      setEmail((v) => v || user.email);
     }
     fillFromUser();
   }, [user]);
@@ -82,7 +84,7 @@ export default function CheckoutPage() {
     }
   }
 
-  const ready = !!cart?.items.length && !!shippingMethodId && receiverName.trim() && receiverPhone.trim() && shippingAddress.trim();
+  const ready = !!cart?.items.length && !!shippingMethodId && receiverName.trim() && receiverPhone.trim() && email.trim() && shippingAddress.trim();
 
   async function placeOrder() {
     if (!ready || !shippingMethodId) return;
@@ -96,6 +98,7 @@ export default function CheckoutPage() {
         paymentMethod: payment,
         receiverName: receiverName.trim(),
         receiverPhone: receiverPhone.trim(),
+        email: email.trim(),
         shippingAddress: shippingAddress.trim(),
         note: note.trim() || undefined,
       });
@@ -117,6 +120,7 @@ export default function CheckoutPage() {
             Mã đơn của bạn là <strong>{placedOrder.code}</strong>. Tổng tiền{' '}
             <strong>{vnd(placedOrder.totalAmount)}</strong>, thanh toán bằng{' '}
             {placedOrder.paymentMethod === 'COD' ? 'tiền mặt khi nhận hàng' : 'chuyển khoản ngân hàng'}.
+            {placedOrder.email && <> Mình đã gửi thông tin đơn hàng tới <strong>{placedOrder.email}</strong>.</>}
           </p>
           {placedOrder.paymentMethod === 'BANK_TRANSFER' && (
             <div className="bank-qr">
@@ -175,6 +179,10 @@ export default function CheckoutPage() {
             <div className="field">
               <label htmlFor="rp">Số điện thoại</label>
               <input id="rp" value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} />
+            </div>
+            <div className="field">
+              <label htmlFor="email">Email nhận thông báo đơn hàng</label>
+              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
             </div>
             <div className="field">
               <label htmlFor="addr">Địa chỉ giao hàng</label>

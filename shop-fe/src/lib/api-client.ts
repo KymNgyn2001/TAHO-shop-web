@@ -83,6 +83,7 @@ type CreateOrderRequest = {
   paymentMethod: 'COD' | 'BANK_TRANSFER';
   receiverName: string;
   receiverPhone: string;
+  email: string;
   shippingAddress: string;
   note?: string | null;
 };
@@ -112,6 +113,7 @@ type Order = {
   paymentMethod: 'COD' | 'BANK_TRANSFER';
   receiverName: string;
   receiverPhone: string;
+  email: string | null;
   shippingAddress: string;
   note: string | null;
   createdBy: 'WEB' | 'CHATBOT';
@@ -695,7 +697,7 @@ export const api = {
       status: 'PENDING', items, subtotal, shippingFee: shipping.fee,
       shippingMethodName: shipping.name, discountCode: body.discountCode ?? null, discountAmount,
       totalAmount: subtotal + shipping.fee - discountAmount, paymentMethod: body.paymentMethod,
-      receiverName: body.receiverName, receiverPhone: body.receiverPhone,
+      receiverName: body.receiverName, receiverPhone: body.receiverPhone, email: body.email,
       shippingAddress: body.shippingAddress, note: body.note ?? null,
       createdBy: 'WEB', createdAt: new Date().toISOString(),
       cancelledAt: null, cancelReason: null, cancellable: true,
