@@ -16,7 +16,7 @@ import type {
   CreateEmployeeResponse,
   ReviewForAdmin,
 } from './api-contract-admin';
-import type { CategoryGroup } from './api-contract';
+import type { CategoryGroup, Order, OrderStatus } from './api-contract';
 
 type Page<T> = {
   items: T[];
@@ -258,6 +258,17 @@ export const adminApi = {
     await delay();
     const items = status ? mockTransactions.filter((t) => t.status === status) : mockTransactions;
     return { items: structuredClone(items), page, size, totalItems: items.length, totalPages: 1 };
+  },
+
+  // ---------- Don hang (toan bo, khac voi api.listOrders() chi tra don cua chinh minh) ----------
+
+  async listAllOrders(page = 0, size = 20, status?: OrderStatus): Promise<Page<Order>> {
+    if (!USE_MOCK) {
+      const q = new URLSearchParams({ page: String(page), size: String(size), ...(status ? { status } : {}) });
+      return request(`/api/admin/orders?${q}`);
+    }
+    await delay();
+    return { items: [], page, size, totalItems: 0, totalPages: 1 };
   },
 
   // ---------- Danh gia ----------

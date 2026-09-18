@@ -176,6 +176,7 @@ export default function SiteHeader() {
                     )}
                     {(user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
                       <>
+                        <Link href="/admin/orders" onClick={() => setMenuOpen(false)}>Đơn hàng (tất cả)</Link>
                         <Link href="/admin/products" onClick={() => setMenuOpen(false)}>Sản phẩm</Link>
                         <Link href="/admin/products/new" onClick={() => setMenuOpen(false)}>Đăng sản phẩm</Link>
                         <Link href="/admin/categories" onClick={() => setMenuOpen(false)}>Danh mục</Link>

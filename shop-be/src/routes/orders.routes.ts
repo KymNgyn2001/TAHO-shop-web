@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { OrderStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
@@ -103,7 +104,9 @@ ordersRouter.post(
           code,
           userId: req.userId ?? null,
           sessionId: req.userId ? null : req.sessionId ?? null,
-          status: 'PENDING',
+          // COD khong can xac minh thanh toan truoc — tu dong xac nhan luon, chi
+          // don chuyen khoan moi can nhan vien tu kiem tra roi bam xac nhan tay.
+          status: body.paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
           subtotal,
           shippingFee: shippingMethod.fee,
           discountAmount,
@@ -159,6 +162,39 @@ ordersRouter.get(
     // "Don hang cua toi" — luon la don cua chinh tai khoan dang dang nhap,
     // ke ca voi nhan vien/quan ly (ho khong tu dong thay het don cua khach o day).
     const where = { userId: req.userId! };
+    const [items, totalItems] = await Promise.all([
+      prisma.order.findMany({
+        where,
+        include: orderInclude,
+        orderBy: { createdAt: 'desc' },
+        skip: page * size,
+        take: size,
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    res.json({
+      items: items.map(toOrder),
+      page,
+      size,
+      totalItems,
+      totalPages: Math.max(1, Math.ceil(totalItems / size)),
+    });
+  }),
+);
+
+/** Toan bo don hang cho nhan vien/quan ly duyet + xu ly — khac voi GET /orders
+ * (luon loc theo chinh tai khoan dang dang nhap, ke ca voi nhan vien). */
+ordersRouter.get(
+  '/admin/orders',
+  requireRole('EMPLOYEE', 'MANAGER'),
+  asyncHandler(async (req, res) => {
+    const page = Math.max(0, Number(req.query.page ?? 0));
+    const size = Math.min(100, Math.max(1, Number(req.query.size ?? 20)));
+    const statusParam = req.query.status as string | undefined;
+    const isValidStatus = (s: string): s is OrderStatus => Object.values(OrderStatus).includes(s as OrderStatus);
+    const where = statusParam && isValidStatus(statusParam) ? { status: statusParam } : {};
+
     const [items, totalItems] = await Promise.all([
       prisma.order.findMany({
         where,
