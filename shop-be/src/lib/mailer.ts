@@ -101,3 +101,43 @@ export async function sendOrderConfirmationEmail(to: string, order: OrderForEmai
     console.error('[mailer] Gui email xac nhan don hang that bai:', e);
   }
 }
+
+/** true neu gui thanh cong — auth.routes.ts can biet de bao loi neu mailer chua
+ * cau hinh (khong the "quen mat khau" duoc neu khong gui mail duoc). */
+export async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<boolean> {
+  if (!transporter) return false;
+  try {
+    await transporter.sendMail({
+      from: `"TAHO" <${env.emailUser}>`,
+      to,
+      subject: 'Đặt lại mật khẩu — TAHO',
+      html: `
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#22201C;">
+          <div style="background:#22201C;color:#fff;padding:20px;text-align:center;">
+            <span style="font-size:22px;font-weight:bold;letter-spacing:1px;">TAHO</span>
+          </div>
+          <div style="padding:24px 20px;">
+            <h2 style="margin:0 0 12px;font-weight:500;">Đặt lại mật khẩu</h2>
+            <p style="color:#444;font-size:14px;line-height:1.6;">
+              Bạn (hoặc ai đó) vừa yêu cầu đặt lại mật khẩu cho tài khoản TAHO gắn với email này.
+              Bấm nút bên dưới để đặt mật khẩu mới — link có hiệu lực trong 1 giờ.
+            </p>
+            <p style="text-align:center;margin:28px 0;">
+              <a href="${resetUrl}" style="background:#22201C;color:#fff;text-decoration:none;padding:12px 28px;border-radius:4px;font-size:14px;display:inline-block;">Đặt lại mật khẩu</a>
+            </p>
+            <p style="color:#888;font-size:12px;">
+              Nếu bạn không yêu cầu việc này, cứ bỏ qua email — mật khẩu hiện tại vẫn giữ nguyên.
+            </p>
+          </div>
+          <div style="background:#f5f5f4;padding:14px 20px;text-align:center;font-size:12px;color:#888;">
+            TAHO · tahowear@gmail.com · 0939 299 099
+          </div>
+        </div>`,
+    });
+    return true;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[mailer] Gui email dat lai mat khau that bai:', e);
+    return false;
+  }
+}

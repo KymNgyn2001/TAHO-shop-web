@@ -44,6 +44,9 @@ export default function LoginPage() {
             <label htmlFor="password">Mật khẩu</label>
             <input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
+          <p style={{ margin: '-0.5rem 0 1rem', textAlign: 'right' }}>
+            <Link href="/forgot-password" style={{ fontSize: 'var(--step--1)', color: 'var(--muted)' }}>Quên mật khẩu?</Link>
+          </p>
           <button type="submit" className="btn-primary" disabled={busy}>
             {busy ? 'Đang đăng nhập…' : 'Đăng nhập'}
           </button>

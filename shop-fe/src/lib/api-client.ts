@@ -478,6 +478,20 @@ export const api = {
     clearSession();
   },
 
+  async forgotPassword(email: string): Promise<{ message: string }> {
+    if (!USE_MOCK) return request('/api/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email }) });
+    await delay(400);
+    return { message: 'Nếu email này tồn tại trong hệ thống, mình đã gửi link đặt lại mật khẩu rồi.' };
+  },
+
+  async resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+    if (!USE_MOCK) {
+      return request('/api/auth/reset-password', { method: 'POST', body: JSON.stringify({ token, newPassword }) });
+    }
+    await delay(400);
+    return { message: 'Đã đặt lại mật khẩu. Bạn đăng nhập lại với mật khẩu mới nhé.' };
+  },
+
   async me(): Promise<AuthUser> {
     if (!USE_MOCK) return request('/api/auth/me');
     await delay(150);

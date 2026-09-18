@@ -55,6 +55,10 @@ model User {
   role          Role     @default(CUSTOMER)
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
+  /** Hash (khong luu token goc) + han dung cua link "quen mat khau" — null khi
+   * khong co yeu cau nao dang cho. */
+  resetTokenHash      String?
+  resetTokenExpiresAt DateTime?
 
   orders        Order[]
   reviews       Review[]
