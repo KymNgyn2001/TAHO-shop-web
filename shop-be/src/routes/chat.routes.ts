@@ -9,6 +9,7 @@ import { addItemToCart, resolveCart } from '../lib/cart';
 import { ApiError } from '../lib/apiError';
 import { parseHeightCm, parseWeightKg, recommendSize, nearestAvailableSize } from '../lib/sizeAdvice';
 import { computeMonthlyStats } from '../lib/monthlyStats';
+import { createProductFromDraft } from '../lib/products';
 
 export const chatRouter = Router();
 
@@ -31,6 +32,8 @@ const REPORT_TRIGGER = ['bao cao', 'doanh thu', 'tong ket', 'thong ke'];
 const HIDE_TRIGGER = ['an san pham', 'ngung ban', 'tam ngung ban'];
 const SHOW_TRIGGER = ['hien san pham', 'mo ban lai', 'ban lai san pham', 'kich hoat lai'];
 const STOCK_TRIGGER = ['cap nhat ton kho', 'sua ton kho', 'chinh ton kho', 'them ton kho'];
+const ADD_PRODUCT_TRIGGER = ['them san pham', 'dang san pham', 'tao san pham moi', 'them mau moi'];
+const AUDIENCE_VI: Record<string, string> = { MEN: 'Nam', WOMEN: 'Nữ', KIDS: 'Trẻ em', UNISEX: 'Unisex' };
 
 function hasAnyFlat(flat: string, words: string[]): boolean {
   return words.some((w) => flat.includes(w));
@@ -66,6 +69,23 @@ function stripBuyNoise(flat: string): string {
 
 function isStaff(role: string | undefined): boolean {
   return role === 'EMPLOYEE' || role === 'MANAGER';
+}
+
+/** "250000" hoac "250k" -> 250000. */
+function parsePriceVnd(message: string): number | null {
+  const m = message.replace(/\./g, '').match(/(\d+)\s*(k)?/i);
+  if (!m) return null;
+  let n = parseInt(m[1], 10);
+  if (m[2]) n *= 1000;
+  return n > 0 ? n : null;
+}
+
+function parseAudience(flat: string): 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX' | null {
+  if (findWholeWord(flat, 'unisex') || flat.includes('ca hai') || flat.includes('khong phan biet')) return 'UNISEX';
+  if (flat.includes('tre em') || flat.includes('tre con')) return 'KIDS';
+  if (findWholeWord(flat, 'nu')) return 'WOMEN';
+  if (findWholeWord(flat, 'nam')) return 'MEN';
+  return null;
 }
 
 /** Lay so muc tieu trong cau lenh cap nhat ton kho — uu tien so ngay sau
@@ -106,7 +126,37 @@ const pendingConfirmSchema = z.union([
     size: z.string(),
     color: z.string(),
   }),
+  z.object({
+    kind: z.literal('CREATE_PRODUCT'),
+    name: z.string(),
+    categoryId: z.number().int().positive(),
+    basePrice: z.number().int().positive(),
+    audience: z.enum(['MEN', 'WOMEN', 'KIDS', 'UNISEX']),
+    material: z.string().optional(),
+    description: z.string().optional(),
+    colors: z.array(z.string()).min(1),
+    sizes: z.array(z.string()).min(1),
+    stockQty: z.number().int().min(0),
+    images: z.array(z.object({ url: z.string() })).min(1),
+  }),
 ]);
+
+/** Trang thai dang thu thap thong tin de dang san pham moi qua chat — moi buoc
+ * chi dien them 1 truong, giu nguyen cac truong da co truoc do. */
+const productDraftSchema = z.object({
+  step: z.enum(['NAME', 'CATEGORY', 'PRICE', 'AUDIENCE', 'MATERIAL', 'DESCRIPTION', 'COLOR', 'SIZE', 'STOCK', 'IMAGE']),
+  name: z.string().optional(),
+  categoryId: z.number().int().positive().optional(),
+  categoryName: z.string().optional(),
+  basePrice: z.number().int().positive().optional(),
+  audience: z.enum(['MEN', 'WOMEN', 'KIDS', 'UNISEX']).optional(),
+  material: z.string().optional(),
+  description: z.string().optional(),
+  colors: z.array(z.string()).optional(),
+  sizes: z.array(z.string()).optional(),
+  stockQty: z.number().int().min(0).optional(),
+  images: z.array(z.object({ url: z.string() })).optional(),
+});
 
 const contextSchema = z
   .object({
@@ -114,6 +164,7 @@ const contextSchema = z
     lastCartItemId: z.number().int().positive().optional(),
     recommendedSize: z.string().optional(),
     pendingConfirm: pendingConfirmSchema.optional(),
+    pendingProduct: productDraftSchema.optional(),
   })
   .optional();
 
@@ -147,7 +198,10 @@ chatRouter.post(
         if (!isYes) {
           return res.json({
             role: 'assistant',
-            content: pending.kind === 'ADD_TO_CART' ? 'Đã huỷ, mình không thêm vào giỏ hàng nhé.' : 'Đã huỷ, mình không xoá sản phẩm đó.',
+            content:
+              pending.kind === 'ADD_TO_CART' ? 'Đã huỷ, mình không thêm vào giỏ hàng nhé.'
+              : pending.kind === 'CREATE_PRODUCT' ? 'Đã huỷ, mình không đăng sản phẩm này nữa.'
+              : 'Đã huỷ, mình không xoá sản phẩm đó.',
             context: restContext,
           });
         }
@@ -221,12 +275,233 @@ chatRouter.post(
           });
         }
 
+        if (pending.kind === 'CREATE_PRODUCT' && isStaff(req.userRole)) {
+          try {
+            const product = await createProductFromDraft({
+              name: pending.name,
+              categoryId: pending.categoryId,
+              basePrice: pending.basePrice,
+              audience: pending.audience,
+              material: pending.material,
+              description: pending.description,
+              colors: pending.colors,
+              sizes: pending.sizes,
+              stockQty: pending.stockQty,
+              images: pending.images,
+            });
+            return res.json({
+              role: 'assistant',
+              content: `Mình đã đăng sản phẩm "${product.name}" lên trang rồi! Vào trang quản trị nếu muốn chỉnh sửa thêm nhé.`,
+              products: [toProductCard(product)],
+              context: restContext,
+            });
+          } catch {
+            return res.json({
+              role: 'assistant',
+              content: 'Có lỗi khi đăng sản phẩm, bạn thử lại hoặc đăng qua trang quản trị giúp mình nhé.',
+              context: restContext,
+            });
+          }
+        }
+
         return res.json({ role: 'assistant', content: 'Mình chưa xử lý được yêu cầu này.', context: restContext });
       }
 
       // Khach noi sang chuyen khac -> bo qua cau hoi xac nhan cu, xu ly binh thuong.
       const { pendingConfirm: _drop, ...restContext } = context;
       context = restContext;
+    }
+
+    // ---------- 0.5. Dang thu thap thong tin de dang san pham moi (chi EMPLOYEE/MANAGER) ----------
+    if (context.pendingProduct && isStaff(req.userRole)) {
+      const draft = context.pendingProduct;
+
+      if (matchesAnyWord(flat, ['huy'])) {
+        const { pendingProduct: _drop, ...restContext } = context;
+        return res.json({ role: 'assistant', content: 'Đã huỷ, mình không đăng sản phẩm này nữa.', context: restContext });
+      }
+
+      const wantsSkip = matchesAnyWord(flat, ['bo qua', 'khong co']);
+
+      if (draft.step === 'NAME') {
+        const name = message.trim();
+        if (!name) {
+          return res.json({ role: 'assistant', content: 'Bạn cho mình tên sản phẩm giúp nhé.', context });
+        }
+        const categories = await prisma.category.findMany();
+        return res.json({
+          role: 'assistant',
+          content: `Sản phẩm "${name}" thuộc danh mục nào? Hiện có: ${categories.map((c) => c.name).join(', ')}.`,
+          context: { ...context, pendingProduct: { ...draft, step: 'CATEGORY', name } },
+        });
+      }
+
+      if (draft.step === 'CATEGORY') {
+        const categories = await prisma.category.findMany();
+        const matched = categories.find((c) => findWholeWord(flat, stripDiacritics(c.name.toLowerCase())));
+        if (!matched) {
+          return res.json({
+            role: 'assistant',
+            content: `Mình chưa nhận ra danh mục đó, bạn chọn giúp 1 trong: ${categories.map((c) => c.name).join(', ')}.`,
+            context,
+          });
+        }
+        return res.json({
+          role: 'assistant',
+          content: `Giá bán "${draft.name}" là bao nhiêu?`,
+          context: { ...context, pendingProduct: { ...draft, step: 'PRICE', categoryId: matched.id, categoryName: matched.name } },
+        });
+      }
+
+      if (draft.step === 'PRICE') {
+        const price = parsePriceVnd(message);
+        if (!price) {
+          return res.json({ role: 'assistant', content: 'Bạn cho mình giá bán cụ thể giúp nhé (VD: 250000 hoặc 250k).', context });
+        }
+        return res.json({
+          role: 'assistant',
+          content: 'Sản phẩm dành cho đối tượng nào — Nam, Nữ, Trẻ em, hay Unisex?',
+          context: { ...context, pendingProduct: { ...draft, step: 'AUDIENCE', basePrice: price } },
+        });
+      }
+
+      if (draft.step === 'AUDIENCE') {
+        const audience = parseAudience(flat);
+        if (!audience) {
+          return res.json({ role: 'assistant', content: 'Bạn chọn giúp mình: Nam, Nữ, Trẻ em, hay Unisex?', context });
+        }
+        return res.json({
+          role: 'assistant',
+          content: 'Chất liệu là gì? (nhắn "bỏ qua" nếu không cần ghi)',
+          context: { ...context, pendingProduct: { ...draft, step: 'MATERIAL', audience } },
+        });
+      }
+
+      if (draft.step === 'MATERIAL') {
+        const material = wantsSkip ? undefined : message.trim();
+        return res.json({
+          role: 'assistant',
+          content: 'Mô tả ngắn về sản phẩm? (nhắn "bỏ qua" nếu không cần)',
+          context: { ...context, pendingProduct: { ...draft, step: 'DESCRIPTION', material } },
+        });
+      }
+
+      if (draft.step === 'DESCRIPTION') {
+        const description = wantsSkip ? undefined : message.trim();
+        return res.json({
+          role: 'assistant',
+          content: 'Sản phẩm có những màu nào? (cách nhau bằng dấu phẩy, VD: Đen, Trắng, Xám)',
+          context: { ...context, pendingProduct: { ...draft, step: 'COLOR', description } },
+        });
+      }
+
+      if (draft.step === 'COLOR') {
+        const colors = message.split(',').map((s) => s.trim()).filter(Boolean);
+        if (colors.length === 0) {
+          return res.json({ role: 'assistant', content: 'Bạn cho mình ít nhất 1 màu giúp nhé.', context });
+        }
+        return res.json({
+          role: 'assistant',
+          content: 'Có những size nào? (cách nhau bằng dấu phẩy, VD: S, M, L, XL)',
+          context: { ...context, pendingProduct: { ...draft, step: 'SIZE', colors } },
+        });
+      }
+
+      if (draft.step === 'SIZE') {
+        const sizes = message.split(',').map((s) => s.trim().toUpperCase()).filter(Boolean);
+        if (sizes.length === 0) {
+          return res.json({ role: 'assistant', content: 'Bạn cho mình ít nhất 1 size giúp nhé.', context });
+        }
+        return res.json({
+          role: 'assistant',
+          content: 'Mỗi màu/size để tồn kho bao nhiêu? (một số áp dụng cho tất cả, sửa lại từng ô sau cũng được)',
+          context: { ...context, pendingProduct: { ...draft, step: 'STOCK', sizes } },
+        });
+      }
+
+      if (draft.step === 'STOCK') {
+        const stockMatch = flat.match(/\d+/);
+        const stockQty = stockMatch ? parseInt(stockMatch[0], 10) : null;
+        if (stockQty == null) {
+          return res.json({ role: 'assistant', content: 'Bạn cho mình một số tồn kho cụ thể giúp nhé (VD: 20).', context });
+        }
+        return res.json({
+          role: 'assistant',
+          content: 'Gửi ảnh sản phẩm cho mình (bấm biểu tượng đính kèm cạnh ô nhắn). Cần ít nhất 1 ảnh — gửi xong thì nhắn "xong".',
+          expectingImage: true,
+          context: { ...context, pendingProduct: { ...draft, step: 'IMAGE', stockQty, images: [] } },
+        });
+      }
+
+      if (draft.step === 'IMAGE') {
+        const images = draft.images ?? [];
+        const isDone = matchesAnyWord(flat, ['xong', 'het anh', 'du anh', 'hoan tat']);
+        const looksLikeUrl = /^https?:\/\//i.test(message.trim());
+
+        if (looksLikeUrl) {
+          const nextImages = [...images, { url: message.trim() }];
+          return res.json({
+            role: 'assistant',
+            content: `Đã nhận ảnh (${nextImages.length}). Gửi thêm ảnh khác hoặc nhắn "xong" khi đủ ảnh rồi.`,
+            expectingImage: true,
+            context: { ...context, pendingProduct: { ...draft, images: nextImages } },
+          });
+        }
+
+        if (isDone) {
+          if (images.length === 0) {
+            return res.json({
+              role: 'assistant',
+              content: 'Cần ít nhất 1 ảnh để đăng sản phẩm — bạn gửi ảnh giúp mình nhé.',
+              expectingImage: true,
+              context,
+            });
+          }
+
+          const summary =
+            `Xác nhận đăng sản phẩm:\n` +
+            `- Tên: ${draft.name}\n` +
+            `- Danh mục: ${draft.categoryName}\n` +
+            `- Giá: ${draft.basePrice?.toLocaleString('vi-VN')}đ\n` +
+            `- Đối tượng: ${AUDIENCE_VI[draft.audience ?? 'UNISEX']}\n` +
+            (draft.material ? `- Chất liệu: ${draft.material}\n` : '') +
+            (draft.description ? `- Mô tả: ${draft.description}\n` : '') +
+            `- Màu: ${draft.colors?.join(', ')}\n` +
+            `- Size: ${draft.sizes?.join(', ')}\n` +
+            `- Tồn kho mỗi biến thể: ${draft.stockQty}\n` +
+            `- Số ảnh: ${images.length}`;
+
+          const { pendingProduct: _drop, ...restContext } = context;
+          return res.json({
+            role: 'assistant',
+            content: summary,
+            confirm: true,
+            context: {
+              ...restContext,
+              pendingConfirm: {
+                kind: 'CREATE_PRODUCT',
+                name: draft.name!,
+                categoryId: draft.categoryId!,
+                basePrice: draft.basePrice!,
+                audience: draft.audience ?? 'UNISEX',
+                material: draft.material,
+                description: draft.description,
+                colors: draft.colors!,
+                sizes: draft.sizes!,
+                stockQty: draft.stockQty!,
+                images,
+              },
+            },
+          });
+        }
+
+        return res.json({
+          role: 'assistant',
+          content: 'Bạn gửi link ảnh, hoặc nhắn "xong" khi đã đủ ảnh.',
+          expectingImage: true,
+          context,
+        });
+      }
     }
 
     // ---------- 1. Tra cuu / huy don qua MA DON ----------
@@ -454,6 +729,15 @@ chatRouter.post(
             color: variant.color,
           },
         },
+      });
+    }
+
+    // ---------- 4d. Bat dau dang san pham moi qua chat (chi EMPLOYEE/MANAGER) ----------
+    if (isStaff(req.userRole) && hasAnyFlat(flat, ADD_PRODUCT_TRIGGER)) {
+      return res.json({
+        role: 'assistant',
+        content: 'Mình sẽ hỏi vài câu để đăng sản phẩm mới nhé. Trước tiên, tên sản phẩm là gì?',
+        context: { ...context, pendingProduct: { step: 'NAME' } },
       });
     }
 

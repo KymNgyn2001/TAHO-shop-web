@@ -155,6 +155,7 @@ type ChatMessage = {
   order?: Order;
   cartUpdated?: boolean;
   confirm?: boolean;
+  expectingImage?: boolean;
   context?: ChatContext;
 };
 

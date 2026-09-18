@@ -190,6 +190,8 @@ export interface ChatMessage {
   cartUpdated?: boolean;
   /** true -> FE hien 2 nut "Đồng ý"/"Không" thay vi o nhap thuong. */
   confirm?: boolean;
+  /** true -> FE hien nut dinh kem anh (dang trong luong dang san pham qua chat). */
+  expectingImage?: boolean;
   /** FE luu lai va gui kem o luot chat tiep theo, khong tu suy doan. */
   context?: ChatContext;
 }

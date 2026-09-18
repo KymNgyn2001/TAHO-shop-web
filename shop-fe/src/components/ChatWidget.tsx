@@ -3,8 +3,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { MessageCircle, X, Send } from 'lucide-react';
+import { MessageCircle, X, Send, Paperclip } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
+import { adminApi } from '@/lib/admin-api';
 import type { ProductCard, Order, ChatContext } from '@/lib/api-contract';
 import { useCart } from '@/lib/cart-context';
 
@@ -15,6 +16,7 @@ type Msg = {
   order?: Order;
   cartUpdated?: boolean;
   confirm?: boolean;
+  expectingImage?: boolean;
 };
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
@@ -30,18 +32,20 @@ export default function ChatWidget() {
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [context, setContext] = useState<ChatContext>({});
+  const [uploadingImage, setUploadingImage] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { refresh: refreshCart } = useCart();
 
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, open]);
 
-  async function send(override?: string) {
+  async function send(override?: string, displayText?: string) {
     const text = (override ?? input).trim();
     if (!text || busy) return;
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
-    setMessages((prev) => [...prev, { role: 'user', content: text }]);
+    setMessages((prev) => [...prev, { role: 'user', content: displayText ?? text }]);
     if (!override) setInput('');
     setBusy(true);
     try {
@@ -58,6 +62,27 @@ export default function ChatWidget() {
       setBusy(false);
     }
   }
+
+  async function attachImage(files: FileList | null) {
+    const file = files?.[0];
+    if (!file || busy || uploadingImage) return;
+    setUploadingImage(true);
+    try {
+      const uploaded = await adminApi.uploadImage(file);
+      await send(uploaded.url, '📷 Đã gửi 1 ảnh');
+    } catch (e) {
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: e instanceof ApiException ? e.message : 'Tải ảnh lên thất bại, bạn thử lại nhé.',
+      }]);
+    } finally {
+      setUploadingImage(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  const lastMsg = messages[messages.length - 1];
+  const expectingImage = lastMsg?.role === 'assistant' && !!lastMsg.expectingImage;
 
   return (
     <div className="chatw">
@@ -112,15 +137,36 @@ export default function ChatWidget() {
           </div>
 
           <div className="chatw__input">
+            {expectingImage && (
+              <>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  onChange={(e) => attachImage(e.target.files)}
+                />
+                <button
+                  type="button"
+                  className="icon-btn"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busy || uploadingImage}
+                  aria-label="Đính kèm ảnh"
+                  title="Đính kèm ảnh"
+                >
+                  <Paperclip size={18} strokeWidth={1.5} />
+                </button>
+              </>
+            )}
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && send()}
-              placeholder="Nhắn cho trợ lý…"
-              disabled={busy}
+              placeholder={uploadingImage ? 'Đang tải ảnh lên…' : 'Nhắn cho trợ lý…'}
+              disabled={busy || uploadingImage}
               aria-label="Nhập tin nhắn"
             />
-            <button type="button" className="icon-btn" onClick={() => send()} disabled={busy || !input.trim()} aria-label="Gửi">
+            <button type="button" className="icon-btn" onClick={() => send()} disabled={busy || uploadingImage || !input.trim()} aria-label="Gửi">
               <Send size={18} strokeWidth={1.5} />
             </button>
           </div>
