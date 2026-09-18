@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminApi } from '@/lib/admin-api';
+import { api, ApiException } from '@/lib/api-client';
 import type { Order, OrderStatus } from '@/lib/api-contract';
 import { useRequireRole } from '@/lib/require-role';
 
@@ -15,6 +16,13 @@ const STATUS_VI: Record<string, string> = {
   SHIPPING: 'Đang giao',
   COMPLETED: 'Hoàn tất',
   CANCELLED: 'Đã huỷ',
+};
+
+/** Trung voi order-detail page — nhan vien chi duoc chuyen toi, khong lui lai. */
+const NEXT_STATUS: Record<string, { status: 'CONFIRMED' | 'SHIPPING' | 'COMPLETED'; label: string } | undefined> = {
+  PENDING: { status: 'CONFIRMED', label: 'Xác nhận' },
+  CONFIRMED: { status: 'SHIPPING', label: 'Giao hàng' },
+  SHIPPING: { status: 'COMPLETED', label: 'Hoàn tất' },
 };
 
 const STATUS_FILTERS: { value: OrderStatus | ''; label: string }[] = [
@@ -31,6 +39,8 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState<OrderStatus | ''>('');
   const [loading, setLoading] = useState(true);
+  const [advancingCode, setAdvancingCode] = useState<string | null>(null);
+  const [rowError, setRowError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -45,6 +55,21 @@ export default function AdminOrdersPage() {
 
   if (!ready) return null;
 
+  async function confirmNext(order: Order) {
+    const next = NEXT_STATUS[order.status];
+    if (!next) return;
+    setAdvancingCode(order.code);
+    setRowError(null);
+    try {
+      const updated = await api.updateOrderStatus(order.code, next.status);
+      setOrders((prev) => prev.map((o) => (o.code === updated.code ? updated : o)));
+    } catch (e) {
+      setRowError(e instanceof ApiException ? e.message : 'Không đổi được trạng thái đơn.');
+    } finally {
+      setAdvancingCode(null);
+    }
+  }
+
   return (
     <div className="wrap admin">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem' }}>
@@ -53,6 +78,8 @@ export default function AdminOrdersPage() {
           {STATUS_FILTERS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
         </select>
       </div>
+
+      {rowError && <p className="error-bar">{rowError}</p>}
 
       {loading ? (
         <div className="skeleton" style={{ height: 200 }} />
@@ -63,19 +90,34 @@ export default function AdminOrdersPage() {
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th>Mã đơn</th><th>Người nhận</th><th>Thanh toán</th><th className="num">Tổng tiền</th><th>Trạng thái</th><th>Ngày đặt</th></tr>
+                <tr><th>Mã đơn</th><th>Người nhận</th><th>Thanh toán</th><th className="num">Tổng tiền</th><th>Trạng thái</th><th>Ngày đặt</th><th></th></tr>
               </thead>
               <tbody>
-                {orders.map((o) => (
-                  <tr key={o.code}>
-                    <td><Link href={`/orders/${o.code}`}>{o.code}</Link></td>
-                    <td>{o.receiverName}</td>
-                    <td>{o.paymentMethod === 'COD' ? 'COD' : 'Chuyển khoản'}</td>
-                    <td className="num">{vnd(o.totalAmount)}</td>
-                    <td><span className="pill" data-s={o.status}>{STATUS_VI[o.status]}</span></td>
-                    <td>{new Date(o.createdAt).toLocaleDateString('vi-VN')}</td>
-                  </tr>
-                ))}
+                {orders.map((o) => {
+                  const next = NEXT_STATUS[o.status];
+                  return (
+                    <tr key={o.code}>
+                      <td><Link href={`/orders/${o.code}`}>{o.code}</Link></td>
+                      <td>{o.receiverName}</td>
+                      <td>{o.paymentMethod === 'COD' ? 'COD' : 'Chuyển khoản'}</td>
+                      <td className="num">{vnd(o.totalAmount)}</td>
+                      <td><span className="pill" data-s={o.status}>{STATUS_VI[o.status]}</span></td>
+                      <td>{new Date(o.createdAt).toLocaleDateString('vi-VN')}</td>
+                      <td>
+                        {next && (
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={() => confirmNext(o)}
+                            disabled={advancingCode === o.code}
+                          >
+                            {advancingCode === o.code ? 'Đang lưu…' : next.label}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
