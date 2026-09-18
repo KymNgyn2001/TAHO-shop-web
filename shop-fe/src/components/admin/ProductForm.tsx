@@ -109,6 +109,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   // --- ma tran gia / ton kho theo (mau, size) ---
   const [cells, setCells] = useState<Record<string, { priceOverride: string; stockQty: string }>>(seed?.cells ?? {});
+  const [bulkStock, setBulkStock] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -242,6 +243,22 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   }
 
   const removeSize = (s: string) => setSizes((prev) => prev.filter((x) => x !== s));
+
+  // ---------------- ap dung ton kho hang loat ----------------
+
+  function applyBulkStock() {
+    if (bulkStock.trim() === '') return;
+    setCells((prev) => {
+      const next = { ...prev };
+      for (const c of validColors) {
+        for (const s of validSizes) {
+          const key = cellKey(c.name, s);
+          next[key] = { priceOverride: next[key]?.priceOverride ?? '', stockQty: bulkStock };
+        }
+      }
+      return next;
+    });
+  }
 
   // ---------------- luu ----------------
 
@@ -568,6 +585,20 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       {validColors.length > 0 && validSizes.length > 0 && (
         <section className="panel">
           <h2>Số lượng &amp; giá riêng theo màu / size</h2>
+          <div className="field-row" style={{ alignItems: 'end', marginBottom: '0.85rem' }}>
+            <div className="field" style={{ margin: 0 }}>
+              <label htmlFor="bulkStock">Áp dụng tồn kho cho tất cả</label>
+              <input
+                id="bulkStock" type="number" min={0} placeholder="VD: 20"
+                value={bulkStock} onChange={(e) => setBulkStock(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applyBulkStock()}
+                style={{ width: 100 }}
+              />
+            </div>
+            <button type="button" className="chip" style={{ height: 40 }} onClick={applyBulkStock} disabled={bulkStock.trim() === ''}>
+              Áp dụng tất cả
+            </button>
+          </div>
           <div className="table-scroll">
             <table className="table">
               <thead>
