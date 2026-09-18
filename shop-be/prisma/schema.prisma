@@ -186,6 +186,12 @@ model Order {
   receiverPhone    String
   /** Email nhan thong bao don hang — null cho don cu truoc khi co tinh nang nay. */
   email            String?
+  /** Link thanh toan MoMo/PayOS — luu lai de khach quay lai trang don hang van thanh
+   * toan tiep duoc, khong chi dung 1 lan luc vua tao don. */
+  payUrl           String?
+  /** Chuoi QR VietQR goc PayOS tra ve (bank-transfer) — FE tu ve lai anh QR tu day,
+   * khong con dung QR tinh gan cung nua. Null neu khong dung PayOS. */
+  payQrData        String?
   shippingAddress  String
   note             String?
   createdBy        CreatedBy       @default(WEB)

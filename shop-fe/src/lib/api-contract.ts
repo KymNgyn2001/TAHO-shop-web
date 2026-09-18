@@ -141,9 +141,11 @@ export interface Order {
   cancelReason: string | null;
   /** BE tinh san, FE khong tu suy luan tu status. */
   cancellable: boolean;
-  /** Chi co ngay sau khi tao don MOMO — link chuyen huong toi trang thanh toan MoMo. */
+  /** Link thanh toan MoMo/PayOS — con dung lai duoc ke ca khi quay lai xem don sau. */
   payUrl?: string | null;
-  /** Chi co ngay sau khi tao don MOMO neu MoMo tu choi tao thanh toan. */
+  /** Chuoi QR VietQR goc tu PayOS — FE tu ve anh QR tu day (xem payosQrImageUrl). */
+  payQrData?: string | null;
+  /** Chi co ngay sau khi tao don MOMO/PayOS neu bi tu choi tao thanh toan. */
   payError?: string | null;
 }
 

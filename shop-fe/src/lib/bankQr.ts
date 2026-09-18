@@ -22,3 +22,12 @@ export const bankInfo = {
   accountNo: ACCOUNT_NO,
   accountName: ACCOUNT_NAME,
 };
+
+/**
+ * Ve lai anh QR tu chuoi VietQR goc ma PayOS tra ve (order.payQrData) — day la ma
+ * that gan voi tai khoan ngan hang da lien ket trong PayOS, khac voi vietQrImageUrl()
+ * o tren (chi la QR tinh set cung, dung khi CHUA cau hinh PayOS).
+ */
+export function payosQrImageUrl(rawQrData: string): string {
+  return `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(rawQrData)}`;
+}

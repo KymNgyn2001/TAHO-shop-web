@@ -123,6 +123,7 @@ type Order = {
   cancelReason: string | null;
   cancellable: boolean;
   payUrl?: string | null;
+  payQrData?: string | null;
   payError?: string | null;
 };
 

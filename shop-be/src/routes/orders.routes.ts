@@ -164,7 +164,12 @@ ordersRouter.post(
           orderInfo: `Thanh toan don hang ${order.code} - TAHO`,
         });
         if (payment.resultCode === 0 && payment.payUrl) {
-          return res.status(201).json({ ...toOrder(order), payUrl: payment.payUrl });
+          const updated = await prisma.order.update({
+            where: { id: order.id },
+            data: { payUrl: payment.payUrl },
+            include: orderInclude,
+          });
+          return res.status(201).json(toOrder(updated));
         }
         // MoMo tu choi tao thanh toan (VD sai cau hinh sandbox) — don van da tao
         // xong (con PENDING), chi bao loi de FE hien thong bao, khong lam mat don.
@@ -184,7 +189,12 @@ ordersRouter.post(
           orderCode: order.code,
           amount: order.totalAmount,
         });
-        return res.status(201).json({ ...toOrder(order), payUrl: payment.checkoutUrl });
+        const updated = await prisma.order.update({
+          where: { id: order.id },
+          data: { payUrl: payment.checkoutUrl, payQrData: payment.qrCode },
+          include: orderInclude,
+        });
+        return res.status(201).json(toOrder(updated));
       } catch (e) {
         return res.status(201).json({
           ...toOrder(order),

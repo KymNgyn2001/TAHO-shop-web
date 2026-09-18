@@ -117,6 +117,8 @@ export function toOrder(
     receiverName: o.receiverName,
     receiverPhone: o.receiverPhone,
     email: o.email,
+    payUrl: o.payUrl,
+    payQrData: o.payQrData,
     shippingAddress: o.shippingAddress,
     note: o.note,
     createdBy: o.createdBy,
