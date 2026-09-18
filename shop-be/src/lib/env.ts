@@ -40,4 +40,11 @@ export const env = {
   momoAccessKey: process.env.MOMO_ACCESS_KEY ?? 'F8BBA842ECF85',
   momoSecretKey: process.env.MOMO_SECRET_KEY ?? 'K951B6PE1waDMi640xX08PD3vg6EkVlz',
   momoEndpoint: process.env.MOMO_ENDPOINT ?? 'https://test-payment.momo.vn/v2/gateway/api/create',
+  // PayOS (chuyen khoan ngan hang, tu dong xac nhan qua webhook) — khac MoMo, PayOS
+  // khong co bo tai khoan test cong khai, phai tu dang ky mien phi tai payos.vn.
+  // De trong thi "Chuyen khoan ngan hang" fallback ve VietQR + nhan vien tu xac nhan
+  // tay nhu truoc, khong lam hong tinh nang cu.
+  payosClientId: process.env.PAYOS_CLIENT_ID ?? '',
+  payosApiKey: process.env.PAYOS_API_KEY ?? '',
+  payosChecksumKey: process.env.PAYOS_CHECKSUM_KEY ?? '',
 };

@@ -11,6 +11,7 @@ import { clearCart, resolveCart } from '../lib/cart';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { sendOrderConfirmationEmail } from '../lib/mailer';
 import { createMomoPayment } from '../lib/momo';
+import { createPayOSPayment, payosEnabled } from '../lib/payos';
 
 export const ordersRouter = Router();
 
@@ -170,6 +171,26 @@ ordersRouter.post(
         return res.status(201).json({ ...toOrder(order), payUrl: null, payError: payment.message });
       } catch {
         return res.status(201).json({ ...toOrder(order), payUrl: null, payError: 'Khong ket noi duoc toi MoMo.' });
+      }
+    }
+
+    // Chuyen khoan ngan hang — neu da cau hinh PayOS thi tao link thanh toan that,
+    // xac nhan tu dong qua webhook; chua cau hinh thi fallback ve VietQR tinh + nhan
+    // vien tu xac nhan tay (hanh vi cu, khong doi gi ca).
+    if (order.paymentMethod === 'BANK_TRANSFER' && payosEnabled) {
+      try {
+        const payment = await createPayOSPayment({
+          orderId: order.id,
+          orderCode: order.code,
+          amount: order.totalAmount,
+        });
+        return res.status(201).json({ ...toOrder(order), payUrl: payment.checkoutUrl });
+      } catch (e) {
+        return res.status(201).json({
+          ...toOrder(order),
+          payUrl: null,
+          payError: e instanceof Error ? e.message : 'Khong ket noi duoc toi PayOS.',
+        });
       }
     }
 

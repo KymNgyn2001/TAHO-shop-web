@@ -109,12 +109,13 @@ export default function CheckoutPage() {
         note: note.trim() || undefined,
       });
       await refreshHeader();
-      if (order.paymentMethod === 'MOMO' && order.payUrl) {
+      if (order.payUrl) {
         window.location.href = order.payUrl;
         return;
       }
-      if (order.paymentMethod === 'MOMO' && order.payError) {
-        setError(`Đơn ${order.code} đã được tạo nhưng không mở được trang thanh toán MoMo (${order.payError}). Bạn xem đơn để thử lại hoặc liên hệ shop.`);
+      if (order.payError) {
+        const gateway = order.paymentMethod === 'MOMO' ? 'MoMo' : 'PayOS';
+        setError(`Đơn ${order.code} đã được tạo nhưng không mở được trang thanh toán ${gateway} (${order.payError}). Bạn xem đơn để thử lại hoặc liên hệ shop.`);
       }
       setPlacedOrder(order);
     } catch (e) {

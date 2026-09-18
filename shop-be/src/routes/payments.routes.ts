@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { verifyMomoIpnSignature } from '../lib/momo';
+import { verifyPayOSWebhook } from '../lib/payos';
 
 export const paymentsRouter = Router();
 
@@ -29,5 +30,26 @@ paymentsRouter.post(
     }
 
     res.status(200).json({ resultCode: 0, message: 'Confirm Success' });
+  }),
+);
+
+/**
+ * PayOS goi thang vao day (server-to-server) khi nhan duoc chuyen khoan khop voi
+ * link thanh toan da tao — dung de tu dong xac nhan don "Chuyen khoan ngan hang"
+ * thay vi phai cho nhan vien tu kiem tra sao ke roi bam tay nhu truoc.
+ */
+paymentsRouter.post(
+  '/payments/payos/webhook',
+  asyncHandler(async (req, res) => {
+    const data = await verifyPayOSWebhook(req.body);
+    if (data && data.code === '00') {
+      const order = await prisma.order.findUnique({ where: { id: data.orderCode } });
+      if (order && order.paymentMethod === 'BANK_TRANSFER' && order.status === 'PENDING') {
+        await prisma.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
+      }
+    }
+    // PayOS cung goi mot request thu (khong khop don nao that) luc dang ky webhook —
+    // van tra 200 binh thuong de qua trinh xac thuc URL thanh cong.
+    res.status(200).json({ error: 0, message: 'success', data: null });
   }),
 );
