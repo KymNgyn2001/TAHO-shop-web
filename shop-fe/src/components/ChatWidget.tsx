@@ -31,8 +31,11 @@ export default function ChatWidget() {
   const [messages, setMessages] = useState<Msg[]>([GREETING]);
   const [input, setInput] = useState('');
   const [busy, setBusy] = useState(false);
-  const [context, setContext] = useState<ChatContext>({});
   const [uploadingImage, setUploadingImage] = useState(false);
+  // Dung ref (khong phai state) cho context — khi gui nhieu anh lien tiep (vong lap
+  // await tuan tu trong attachImages), moi lan goi send() phai thay duoc context
+  // MOI NHAT ngay lap tuc, khong doi kip 1 vong render nhu useState moi cap nhat kip.
+  const contextRef = useRef<ChatContext>({});
   const bottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { refresh: refreshCart } = useCart();
@@ -49,9 +52,9 @@ export default function ChatWidget() {
     if (!override) setInput('');
     setBusy(true);
     try {
-      const reply = await api.chat({ message: text, history, context });
+      const reply = await api.chat({ message: text, history, context: contextRef.current });
       setMessages((prev) => [...prev, reply]);
-      setContext(reply.context ?? {});
+      contextRef.current = reply.context ?? {};
       if (reply.cartUpdated) await refreshCart();
     } catch (e) {
       setMessages((prev) => [...prev, {
@@ -63,13 +66,15 @@ export default function ChatWidget() {
     }
   }
 
-  async function attachImage(files: FileList | null) {
-    const file = files?.[0];
-    if (!file || busy || uploadingImage) return;
+  async function attachImages(files: FileList | null) {
+    const list = files ? Array.from(files) : [];
+    if (list.length === 0 || busy || uploadingImage) return;
     setUploadingImage(true);
     try {
-      const uploaded = await adminApi.uploadImage(file);
-      await send(uploaded.url, '📷 Đã gửi 1 ảnh');
+      for (const file of list) {
+        const uploaded = await adminApi.uploadImage(file);
+        await send(uploaded.url, '📷 Đã gửi 1 ảnh');
+      }
     } catch (e) {
       setMessages((prev) => [...prev, {
         role: 'assistant',
@@ -143,16 +148,17 @@ export default function ChatWidget() {
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   hidden
-                  onChange={(e) => attachImage(e.target.files)}
+                  onChange={(e) => attachImages(e.target.files)}
                 />
                 <button
                   type="button"
                   className="icon-btn"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={busy || uploadingImage}
-                  aria-label="Đính kèm ảnh"
-                  title="Đính kèm ảnh"
+                  aria-label="Đính kèm ảnh (chọn được nhiều ảnh)"
+                  title="Đính kèm ảnh (chọn được nhiều ảnh)"
                 >
                   <Paperclip size={18} strokeWidth={1.5} />
                 </button>

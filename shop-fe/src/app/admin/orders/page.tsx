@@ -22,9 +22,10 @@ const STATUS_VI: Record<string, string> = {
   CANCELLED: 'Đã huỷ',
 };
 
-/** Trung voi order-detail page — nhan vien chi duoc chuyen toi, khong lui lai. */
-const NEXT_STATUS: Record<string, { status: 'CONFIRMED' | 'SHIPPING' | 'COMPLETED'; label: string } | undefined> = {
-  PENDING: { status: 'CONFIRMED', label: 'Xác nhận' },
+/** Trung voi order-detail page — nhan vien chi duoc chuyen toi, khong lui lai.
+ * PENDING -> CONFIRMED khong con la thao tac tay: COD tu xac nhan luc tao don,
+ * con chuyen khoan/MoMo tu xac nhan qua webhook thanh toan that. */
+const NEXT_STATUS: Record<string, { status: 'SHIPPING' | 'COMPLETED'; label: string } | undefined> = {
   CONFIRMED: { status: 'SHIPPING', label: 'Giao hàng' },
   SHIPPING: { status: 'COMPLETED', label: 'Hoàn tất' },
 };

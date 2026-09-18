@@ -1,20 +1,20 @@
 /**
- * Tu van size dua tren chieu cao/can nang khach nhap trong chat — hien tai la
- * BANG UOC LUONG CHUNG (khong rieng tung san pham), dat o 1 cho de sau nay thay
- * bang bang so do that cua tung ao (nguoi dung hua se gui) ma khong phai dung tay
- * vao logic chat.routes.ts.
+ * Tu van size dua tren chieu cao/can nang khach nhap trong chat. Nguong lay tu bang
+ * so do that cua Hoodie TAHO (S 1m50-1m60/45-60kg ... 2XL 1m72-1m85/95-110kg) —
+ * dung chung cho moi san pham vi hien chua co so do rieng tung loai ao trong DB.
  *
  * Cach doi sang so do rieng cua san pham sau nay: sua ham recommendSize() de nhan
  * them tham so bang size cua san pham (VD tu 1 truong moi trong DB) thay vi dung
  * WEIGHT_TIERS/HEIGHT_TIERS co dinh ben duoi.
  */
 
-export const SIZE_ORDER = ['S', 'M', 'L', 'XL', 'XXL'] as const;
+export const SIZE_ORDER = ['S', 'M', 'L', 'XL', '2XL', '3XL'] as const;
 
-/** Nguong tren (kg) cua tung size — vd <50kg la S, 50-58kg la M... */
-const WEIGHT_TIERS = [50, 58, 68, 78, Infinity];
+/** Nguong tren (kg) cua tung size — vd <58kg la S, 58-68kg la M... (3XL chua co
+ * so do rieng, tam dung nguong tren cua 2XL keo dai them). */
+const WEIGHT_TIERS = [58, 68, 81, 98, 110, Infinity];
 /** Nguong tren (cm) cua tung size. */
-const HEIGHT_TIERS = [158, 165, 172, 180, Infinity];
+const HEIGHT_TIERS = [159, 167, 172, 176, 185, Infinity];
 
 function tierIndex(value: number, tiers: number[]): number {
   return tiers.findIndex((max) => value < max);

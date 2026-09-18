@@ -31,7 +31,7 @@ statsRouter.get(
     const [orders, totalItems] = await Promise.all([
       prisma.order.findMany({
         where,
-        include: { user: true, items: true },
+        include: { items: true },
         orderBy: { createdAt: 'desc' },
         skip: page * size,
         take: size,
@@ -42,7 +42,10 @@ statsRouter.get(
     res.json({
       items: orders.map((o) => ({
         orderCode: o.code,
-        customerName: o.user?.name ?? o.receiverName,
+        // Dung receiverName (nguoi nhan hang) thay vi ten tai khoan — trung voi cach
+        // trang "Don hang" (admin/orders) hien thi, tranh 2 noi cho ra 2 ten khac nhau
+        // cho cung 1 don (VD tai khoan dung chung nhung nguoi nhan la nguoi khac).
+        customerName: o.receiverName,
         itemCount: o.items.reduce((s, i) => s + i.quantity, 0),
         totalAmount: o.totalAmount,
         status: o.status,

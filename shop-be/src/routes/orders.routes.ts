@@ -316,9 +316,12 @@ ordersRouter.post(
 );
 
 /** Thu tu tien trien don hang — nhan vien/quan ly chi duoc chuyen toi, khong lui lai
- * duoc, va khong dung endpoint nay de huy (da co /cancel rieng, co hoan kho). */
+ * duoc, va khong dung endpoint nay de huy (da co /cancel rieng, co hoan kho).
+ * PENDING -> CONFIRMED khong con la thao tac tay nua — COD tu dong xac nhan luc tao
+ * don, con chuyen khoan/MoMo tu dong xac nhan qua webhook thanh toan that (xem
+ * payments.routes.ts). Nhan vien chi con giup khach huy don khi doi y. */
 const STATUS_FLOW = ['PENDING', 'CONFIRMED', 'SHIPPING', 'COMPLETED'] as const;
-const updateStatusSchema = z.object({ status: z.enum(['CONFIRMED', 'SHIPPING', 'COMPLETED']) });
+const updateStatusSchema = z.object({ status: z.enum(['SHIPPING', 'COMPLETED']) });
 
 ordersRouter.patch(
   '/admin/orders/:code/status',
@@ -329,6 +332,9 @@ ordersRouter.patch(
     if (!order) throw Errors.notFound('Khong tim thay don hang.');
     if (order.status === 'CANCELLED') {
       throw Errors.conflict('ORDER_CANCELLED', 'Don da huy, khong doi trang thai duoc nua.');
+    }
+    if (order.status === 'PENDING') {
+      throw Errors.conflict('ORDER_NOT_CONFIRMED', 'Don chua duoc xac nhan thanh toan, chua the chuyen trang thai.');
     }
 
     const currentIdx = STATUS_FLOW.indexOf(order.status as (typeof STATUS_FLOW)[number]);

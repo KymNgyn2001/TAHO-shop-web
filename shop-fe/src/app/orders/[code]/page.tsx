@@ -19,10 +19,10 @@ const STATUS_VI: Record<string, string> = {
   CANCELLED: 'Đã huỷ',
 };
 
-/** Nhan vien/quan ly xac nhan tay sau khi tu kiem tra da nhan duoc tien (QR chi la
- * goi y chuyen khoan, khong phai cong thanh toan nen he thong khong tu biet). */
-const NEXT_STATUS: Record<string, { status: 'CONFIRMED' | 'SHIPPING' | 'COMPLETED'; label: string } | undefined> = {
-  PENDING: { status: 'CONFIRMED', label: 'Xác nhận đã nhận thanh toán' },
+/** PENDING -> CONFIRMED khong con la thao tac tay: COD tu xac nhan luc tao don,
+ * con chuyen khoan/MoMo tu xac nhan qua webhook thanh toan that (PayOS/MoMo).
+ * Nhan vien chi con giup tien trien giao hang, hoac huy don khi khach doi y. */
+const NEXT_STATUS: Record<string, { status: 'SHIPPING' | 'COMPLETED'; label: string } | undefined> = {
   CONFIRMED: { status: 'SHIPPING', label: 'Chuyển sang Đang giao' },
   SHIPPING: { status: 'COMPLETED', label: 'Đánh dấu Hoàn tất' },
 };

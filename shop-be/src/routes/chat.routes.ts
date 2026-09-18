@@ -920,7 +920,7 @@ chatRouter.post(
       if (heightCm == null && weightKg == null) {
         return res.json({
           role: 'assistant',
-          content: 'Bạn cho mình biết chiều cao/cân nặng để tư vấn size chính xác hơn nhé. Thông thường 1m60-1m68, 50-58kg hợp size M.',
+          content: 'Bạn cho mình biết chiều cao/cân nặng để tư vấn size chính xác hơn nhé. Thông thường 1m58-1m68, 55-70kg hợp size M.',
           context,
         });
       }
