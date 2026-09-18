@@ -7,21 +7,10 @@ import { getRequestBaseUrl } from '../lib/requestContext';
 
 const ALLOWED = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    const now = new Date();
-    const dir = path.join(env.uploadDir, String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, '0'));
-    fs.mkdirSync(dir, { recursive: true });
-    cb(null, dir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname) || '.jpg';
-    cb(null, `${crypto.randomBytes(12).toString('hex')}${ext}`);
-  },
-});
-
+// memoryStorage — file nam trong RAM (req.file.buffer) de co the day thang len
+// Cloudflare R2; khong con ghi dia truoc nhu cu (dia cua Render bi xoa moi lan deploy).
 export const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   limits: { fileSize: env.maxUploadBytes },
   fileFilter: (_req, file, cb) => {
     if (!ALLOWED.has(file.mimetype)) {
@@ -33,14 +22,18 @@ export const upload = multer({
 });
 
 /**
- * URL day du de FE preview ngay sau khi upload — dung host cua chinh request hien tai
- * (getRequestBaseUrl) nen luon dung du dang truy cap qua wifi/IP nao. Luu y: cho nay
- * chi phuc vu preview tuc thoi, khi luu vao DB (products.routes.ts) URL se duoc rut
- * gon lai thanh duong dan tuong doi qua toRelativePath() de khong bi "dinh cung" vao
- * mang tai thoi diem upload.
+ * Fallback luu dia cuc bo — chi dung khi chua cau hinh R2 (VD dev local). Tren
+ * Render thi KHONG nen dung duong nay vi dia se bi xoa trang moi lan deploy lai.
  */
-export function publicUrlFor(filePath: string): string {
-  const relative = `/${path.relative('.', filePath).split(path.sep).join('/')}`;
+export function saveLocalUpload(file: Express.Multer.File): string {
+  const now = new Date();
+  const dir = path.join(env.uploadDir, String(now.getFullYear()), String(now.getMonth() + 1).padStart(2, '0'));
+  fs.mkdirSync(dir, { recursive: true });
+  const ext = path.extname(file.originalname) || '.jpg';
+  const fileName = `${crypto.randomBytes(12).toString('hex')}${ext}`;
+  fs.writeFileSync(path.join(dir, fileName), file.buffer);
+
+  const relative = `/${env.uploadDir}/${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${fileName}`;
   const base = getRequestBaseUrl() ?? env.publicBaseUrl;
   return `${base}${relative}`;
 }

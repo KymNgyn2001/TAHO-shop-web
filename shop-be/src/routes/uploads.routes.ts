@@ -1,7 +1,8 @@
 import { Router } from 'express';
 import { ApiError } from '../lib/apiError';
 import { requireRole } from '../middleware/auth';
-import { upload, publicUrlFor } from '../middleware/upload';
+import { upload, saveLocalUpload } from '../middleware/upload';
+import { uploadToR2, r2Enabled } from '../lib/r2';
 
 export const uploadsRouter = Router();
 
@@ -22,12 +23,15 @@ uploadsRouter.post(
       next();
     });
   },
-  (req, res, next) => {
+  async (req, res, next) => {
     if (!req.file) return next(new ApiError(400, 'VALIDATION_FAILED', 'Thieu file anh.'));
-    res.json({
-      url: publicUrlFor(req.file.path),
-      fileName: req.file.originalname,
-      sizeBytes: req.file.size,
-    });
+    try {
+      const url = r2Enabled
+        ? await uploadToR2(req.file.buffer, req.file.originalname, req.file.mimetype)
+        : saveLocalUpload(req.file);
+      res.json({ url, fileName: req.file.originalname, sizeBytes: req.file.size });
+    } catch (err) {
+      next(err);
+    }
   },
 );

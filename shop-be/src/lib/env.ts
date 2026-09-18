@@ -21,4 +21,11 @@ export const env = {
   // (khong lam sap don hang), chi log canh bao. Xem README de biet cach lay App Password.
   emailUser: process.env.EMAIL_USER ?? '',
   emailAppPassword: process.env.EMAIL_APP_PASSWORD ?? '',
+  // Cloudflare R2 (luu anh san pham) — de trong thi fallback ve dia cuc bo (chi dung
+  // cho dev, vi disk cua Render se bi xoa moi lan deploy lai).
+  r2AccountId: process.env.R2_ACCOUNT_ID ?? '',
+  r2AccessKeyId: process.env.R2_ACCESS_KEY_ID ?? '',
+  r2SecretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? '',
+  r2Bucket: process.env.R2_BUCKET_NAME ?? '',
+  r2PublicUrl: (process.env.R2_PUBLIC_URL ?? '').replace(/\/$/, ''),
 };
