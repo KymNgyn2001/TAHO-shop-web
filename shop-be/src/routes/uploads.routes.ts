@@ -16,7 +16,7 @@ uploadsRouter.post(
           return next(new ApiError(415, 'UNSUPPORTED_TYPE', 'Dinh dang anh khong duoc ho tro.'));
         }
         if (err instanceof Error && err.name === 'MulterError' && (err as { code?: string }).code === 'LIMIT_FILE_SIZE') {
-          return next(new ApiError(413, 'FILE_TOO_LARGE', 'Anh vuot qua 5MB.'));
+          return next(new ApiError(413, 'FILE_TOO_LARGE', 'Anh vuot qua 10MB.'));
         }
         return next(err);
       }

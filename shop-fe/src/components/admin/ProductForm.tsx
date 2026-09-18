@@ -9,7 +9,7 @@ import { ApiException } from '@/lib/api-client';
 import type { CategoryWithCount } from '@/lib/api-contract-admin';
 import type { ProductDetail } from '@/lib/api-contract';
 
-const MAX_MB = 5;
+const MAX_MB = 10;
 
 type Audience = 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
 type ColorImage = { url: string; name: string };

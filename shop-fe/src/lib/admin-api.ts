@@ -142,7 +142,7 @@ export const adminApi = {
       if (!res.ok) {
         throw new ApiException(
           res.status === 413 ? 'FILE_TOO_LARGE' : 'UNSUPPORTED_TYPE',
-          res.status === 413 ? 'Ảnh vượt quá 5MB.' : 'Định dạng ảnh không được hỗ trợ.',
+          res.status === 413 ? 'Ảnh vượt quá 10MB.' : 'Định dạng ảnh không được hỗ trợ.',
           res.status,
         );
       }

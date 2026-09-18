@@ -16,7 +16,7 @@ export const env = {
     .filter(Boolean),
   uploadDir: process.env.UPLOAD_DIR ?? 'uploads',
   publicBaseUrl: (process.env.PUBLIC_BASE_URL ?? `http://localhost:${process.env.PORT ?? 8080}`).replace(/\/$/, ''),
-  maxUploadBytes: Number(process.env.MAX_UPLOAD_MB ?? 5) * 1024 * 1024,
+  maxUploadBytes: Number(process.env.MAX_UPLOAD_MB ?? 10) * 1024 * 1024,
   // Gui mail xac nhan don hang qua Gmail SMTP — de trong thi bo qua gui mail
   // (khong lam sap don hang), chi log canh bao. Xem README de biet cach lay App Password.
   emailUser: process.env.EMAIL_USER ?? '',

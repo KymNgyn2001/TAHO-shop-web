@@ -167,7 +167,7 @@ export interface ReplyReviewRequest {
 // =====================================================================
 //
 // POST   /api/admin/uploads          multipart: file  -> UploadedImage   [EMPLOYEE, MANAGER]
-//        Gioi han 5MB, chi nhan jpeg/png/webp.
+//        Gioi han 10MB, chi nhan jpeg/png/webp.
 //        Loi: 413 FILE_TOO_LARGE, 415 UNSUPPORTED_TYPE
 //
 // GET    /api/categories                        -> CategoryWithCount[]  [cong khai]
