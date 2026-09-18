@@ -112,14 +112,14 @@ export default function ManagerEmployeesPage() {
         <h2>Danh sách nhân viên ({employees.length})</h2>
         <div className="table-scroll">
           <table className="table">
-            <thead><tr><th>Tên</th><th>Email</th><th>SĐT</th><th>Trạng thái</th><th /></tr></thead>
+            <thead><tr><th>Tên</th><th>Email</th><th>SĐT</th><th className="center">Trạng thái</th><th /></tr></thead>
             <tbody>
               {employees.map((e) => (
                 <tr key={e.id}>
                   <td>{e.name}</td>
                   <td>{e.email}</td>
                   <td>{e.phone ?? '—'}</td>
-                  <td><span className="pill" data-s={e.active ? 'COMPLETED' : 'CANCELLED'}>{e.active ? 'Đang làm việc' : 'Đã khoá'}</span></td>
+                  <td className="center"><span className="pill" data-s={e.active ? 'COMPLETED' : 'CANCELLED'}>{e.active ? 'Đang làm việc' : 'Đã khoá'}</span></td>
                   <td>
                     <button type="button" className="chip" onClick={() => toggleActive(e)}>
                       {e.active ? 'Khoá' : 'Mở lại'}

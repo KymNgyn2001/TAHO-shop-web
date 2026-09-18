@@ -195,6 +195,9 @@
 /* Tieu de cot ".num" phai canh phai giong voi gia tri ben duoi, khong thi tieu de
    nam ben trai con so lieu nam ben phai — nhin lech hang giua tieu de va gia tri. */
 .table th.num { text-align: right; }
+/* Cot gia tien va trang thai (pill) — can giua ca tieu de lan gia tri cho de nhin,
+   thay vi bi don sat 1 phia. */
+.table td.center, .table th.center { text-align: center; }
 
 .pill {
   display: inline-block; padding: 0.15rem 0.55rem;

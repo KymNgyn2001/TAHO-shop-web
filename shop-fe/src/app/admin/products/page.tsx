@@ -106,7 +106,7 @@ export default function AdminProductsPage() {
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th /><th>Tên</th><th>Danh mục</th><th>Đối tượng</th><th className="num">Giá</th><th>Trạng thái</th><th /></tr>
+                <tr><th /><th>Tên</th><th>Danh mục</th><th>Đối tượng</th><th className="center">Giá</th><th className="center">Trạng thái</th><th /></tr>
               </thead>
               <tbody>
                 {filteredProducts.map((p) => (
@@ -121,8 +121,8 @@ export default function AdminProductsPage() {
                     </td>
                     <td>{p.categoryName ?? '—'}</td>
                     <td>{AUDIENCE_VI[p.audience] ?? p.audience}</td>
-                    <td className="num">{vnd(p.basePrice)}</td>
-                    <td>
+                    <td className="center">{vnd(p.basePrice)}</td>
+                    <td className="center">
                       <span className="pill" data-s={p.active ? 'COMPLETED' : 'CANCELLED'}>
                         {p.active ? 'Đang bán' : 'Đã ẩn'}
                       </span>

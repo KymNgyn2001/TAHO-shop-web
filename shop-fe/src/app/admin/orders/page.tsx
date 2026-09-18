@@ -95,7 +95,7 @@ export default function AdminOrdersPage() {
           <div className="table-scroll">
             <table className="table">
               <thead>
-                <tr><th>Mã đơn</th><th>Người nhận</th><th>Thanh toán</th><th className="num">Tổng tiền</th><th>Trạng thái</th><th>Ngày đặt</th><th></th></tr>
+                <tr><th>Mã đơn</th><th>Người nhận</th><th>Thanh toán</th><th className="center">Tổng tiền</th><th className="center">Trạng thái</th><th>Ngày đặt</th><th></th></tr>
               </thead>
               <tbody>
                 {orders.map((o) => {
@@ -105,8 +105,8 @@ export default function AdminOrdersPage() {
                       <td><Link href={`/orders/${o.code}`}>{o.code}</Link></td>
                       <td>{o.receiverName}</td>
                       <td>{PAYMENT_VI[o.paymentMethod] ?? o.paymentMethod}</td>
-                      <td className="num">{vnd(o.totalAmount)}</td>
-                      <td><span className="pill" data-s={o.status}>{STATUS_VI[o.status]}</span></td>
+                      <td className="center">{vnd(o.totalAmount)}</td>
+                      <td className="center"><span className="pill" data-s={o.status}>{STATUS_VI[o.status]}</span></td>
                       <td>{new Date(o.createdAt).toLocaleDateString('vi-VN')}</td>
                       <td>
                         {next && (

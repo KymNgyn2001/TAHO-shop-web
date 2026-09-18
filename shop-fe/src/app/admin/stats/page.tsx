@@ -312,8 +312,8 @@ export default function StatsPage() {
                 <th>Mã đơn</th>
                 <th>Khách</th>
                 <th className="num">SP</th>
-                <th className="num">Tổng tiền</th>
-                <th>Trạng thái</th>
+                <th className="center">Tổng tiền</th>
+                <th className="center">Trạng thái</th>
                 <th>Ngày</th>
               </tr>
             </thead>
@@ -323,8 +323,8 @@ export default function StatsPage() {
                   <td>{t.orderCode}</td>
                   <td>{t.customerName}</td>
                   <td className="num">{t.itemCount}</td>
-                  <td className="num">{vnd(t.totalAmount)}</td>
-                  <td>
+                  <td className="center">{vnd(t.totalAmount)}</td>
+                  <td className="center">
                     <span className="pill" data-s={t.status}>
                       {STATUS_VI[t.status]}
                     </span>
