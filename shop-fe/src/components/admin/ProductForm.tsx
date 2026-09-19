@@ -243,6 +243,39 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       return next;
     });
   }
+  /** Keo-tha doi cho anh: scope = 'general' (anh chung) hoac id cua mau (anh rieng tung mau). Anh dung dau la anh chinh. */
+  const imgDragRef = useRef<{ scope: string; index: number } | null>(null);
+  const [imgOver, setImgOver] = useState<string | null>(null);
+  const imgKey = (scope: string, i: number) => `${scope}:${i}`;
+
+  function dropImage(scope: string, to: number) {
+    const d = imgDragRef.current;
+    imgDragRef.current = null;
+    setImgOver(null);
+    if (!d || d.scope !== scope || d.index === to) return;
+    const reorder = <T,>(arr: T[]) => {
+      const next = [...arr];
+      const [item] = next.splice(d.index, 1);
+      next.splice(to, 0, item);
+      return next;
+    };
+    if (scope === 'general') setImages((prev) => reorder(prev));
+    else setColors((prev) => prev.map((c) => (c.id === scope ? { ...c, images: reorder(c.images) } : c)));
+  }
+
+  /** Thuoc tinh dung chung cho 1 o anh keo-tha duoc. */
+  const imgDnd = (scope: string, i: number) => ({
+    draggable: true,
+    onDragStart: () => { imgDragRef.current = { scope, index: i }; },
+    onDragEnd: () => { imgDragRef.current = null; setImgOver(null); },
+    onDragOver: (e: React.DragEvent) => {
+      if (imgDragRef.current?.scope === scope) { e.preventDefault(); e.stopPropagation(); setImgOver(imgKey(scope, i)); }
+    },
+    onDrop: (e: React.DragEvent) => {
+      if (imgDragRef.current?.scope === scope) { e.preventDefault(); e.stopPropagation(); dropImage(scope, i); }
+    },
+  });
+
   const dropOn = (list: 'color' | 'size', to: number) => {
     const d = dragRef.current;
     dragRef.current = null;
@@ -464,8 +497,13 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
           <>
             <div className="thumbs">
               {images.map((im, i) => (
-                <div className="thumb" key={im.url}>
-                  <img src={im.url} alt={im.name} />
+                <div
+                  className={`thumb thumb--drag${imgOver === imgKey('general', i) ? ' thumb--over' : ''}`}
+                  key={im.url}
+                  title="Kéo để đổi vị trí ảnh"
+                  {...imgDnd('general', i)}
+                >
+                  <img src={im.url} alt={im.name} draggable={false} />
                   <button
                     type="button"
                     onClick={() => setImages((p) => p.filter((_, j) => j !== i))}
@@ -484,7 +522,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
               ))}
             </div>
             <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginTop: '0.5rem' }}>
-              Ảnh đầu tiên hiện ở trang chủ. Đây là ảnh dùng chung khi khách chưa chọn màu nào cụ thể.
+              Kéo ảnh để đổi vị trí — ảnh đứng đầu là ảnh chính, hiện ở trang chủ. Đây là ảnh dùng chung khi khách chưa chọn màu nào cụ thể.
             </p>
           </>
         )}
@@ -787,9 +825,14 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
                           <td className="variant-table__color" rowSpan={validSizes.length}>
                             <strong>{c.name}</strong>
                             <div className="variant-table__imgs">
-                              {c.images.map((im) => (
-                                <div className="variant-table__thumb" key={im.url}>
-                                  <img src={im.url} alt={`${c.name} — ${im.name}`} />
+                              {c.images.map((im, ii) => (
+                                <div
+                                  className={`variant-table__thumb thumb--drag${imgOver === imgKey(c.id, ii) ? ' thumb--over' : ''}`}
+                                  key={im.url}
+                                  title="Kéo để đổi vị trí ảnh"
+                                  {...imgDnd(c.id, ii)}
+                                >
+                                  <img src={im.url} alt={`${c.name} — ${im.name}`} draggable={false} />
                                   <button type="button" onClick={() => removeColorImage(c.id, im.url)} aria-label={`Xoá ảnh ${im.name}`}>
                                     <X size={10} />
                                   </button>
