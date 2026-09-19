@@ -148,17 +148,17 @@
 @media (max-width: 480px) { .form-actions { grid-template-columns: 1fr; } }
 
 /* Khu "Hinh anh san pham" kieu Shopee — den/trang */
-.imgfield { display: grid; grid-template-columns: 170px 1fr; gap: 1rem; align-items: start; }
-.imgfield__label { font-size: var(--step--1); font-weight: 500; padding-top: 0.15rem; }
-.imgfield .req-dot { background: var(--ink); }
+/* Bo cuc xep doc, thang mep trai: nhan -> chon ty le -> luoi o anh -> ghi chu */
+.imgfield { display: block; }
+.imgfield__label { font-size: var(--step-0); font-weight: 600; margin-bottom: 0.9rem; }
+.req-star { color: var(--ink); margin-right: 0.25rem; }
 .imgfield__hint { font-size: 0.8125rem; color: var(--muted); margin: 0.85rem 0 0; line-height: 1.5; }
 .radio-row--tight { margin-top: 0; margin-bottom: 0.9rem; }
-@media (max-width: 720px) { .imgfield { grid-template-columns: 1fr; gap: 0.5rem; } }
 
-.imgtiles { display: flex; flex-wrap: wrap; gap: 0.75rem; border-radius: 6px; }
+.imgtiles { display: flex; flex-wrap: wrap; gap: 0.6rem; border-radius: 6px; }
 .imgtiles--hot { outline: 2px dashed var(--ink); outline-offset: 6px; background: var(--wash); }
 .imgtile {
-  position: relative; width: 112px; aspect-ratio: var(--ratio, 3 / 4); flex: 0 0 auto;
+  position: relative; width: 92px; aspect-ratio: var(--ratio, 1 / 1); flex: 0 0 auto;
   border: 1px solid var(--line); border-radius: 6px; background: var(--paper); overflow: hidden; padding: 0;
 }
 .imgtile img { width: 100%; height: 100%; object-fit: contain; display: block; }
@@ -180,7 +180,8 @@
   display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem;
   border: 1px dashed var(--ink); background: transparent; color: var(--ink); cursor: pointer; padding: 0 0.5rem;
 }
-.imgtile--add span { font-size: 12px; line-height: 1.3; text-align: center; }
+.imgtile--add span { font-size: 11px; line-height: 1.3; text-align: center; }
+.imgtile__x { top: 3px; right: 3px; width: 18px; height: 18px; }
 .imgtile--add:hover:not(:disabled) { background: var(--wash); }
 .imgtile--add:disabled { opacity: 0.6; cursor: not-allowed; }
 

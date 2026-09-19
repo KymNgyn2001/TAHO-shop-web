@@ -108,7 +108,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   const [images, setImages] = useState<{ url: string; name: string }[]>(seed?.generalImages ?? []);
   const [uploading, setUploading] = useState(false);
   const [hot, setHot] = useState(false);
-  const [ratio, setRatio] = useState<'3 / 4' | '1 / 1'>('3 / 4');
+  const [ratio, setRatio] = useState<'3 / 4' | '1 / 1'>('1 / 1');
   const fileRef = useRef<HTMLInputElement>(null);
 
   // --- bang size ---
@@ -499,10 +499,10 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       <section className="panel">
         <h2>Thông tin cơ bản</h2>
         <div className="imgfield">
-          <div className="imgfield__label"><i className="req-dot" /> Hình ảnh sản phẩm</div>
+          <div className="imgfield__label"><span className="req-star">*</span>Hình ảnh sản phẩm</div>
           <div className="imgfield__body">
             <div className="radio-row radio-row--tight" role="radiogroup" aria-label="Tỷ lệ khung ảnh">
-              {(['3 / 4', '1 / 1'] as const).map((r) => (
+              {(['1 / 1', '3 / 4'] as const).map((r) => (
                 <label key={r} className="radio">
                   <input type="radio" name="imgRatio" checked={ratio === r} onChange={() => setRatio(r)} />
                   <span>Khung ảnh tỷ lệ {r.replace(' / ', ':')}</span>
