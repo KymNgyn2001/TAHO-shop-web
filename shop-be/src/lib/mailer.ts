@@ -8,9 +8,13 @@ const vnd = (n: number) => n.toLocaleString('vi-VN') + ' đ';
 const transporter =
   env.emailUser && env.emailAppPassword
     ? nodemailer.createTransport({
-        service: 'gmail',
+        host: 'smtp.gmail.com',
+        port: 465,
+        secure: true,
         auth: { user: env.emailUser, pass: env.emailAppPassword.replace(/\s+/g, '') },
         // Neu SMTP bi chan (VD Render goi mien phi chan cong 465/587) thi bao loi nhanh, khong treo 2 phut.
+        // Ep IPv4 (bind 0.0.0.0): Render khong co duong ra IPv6 nen smtp.gmail.com (ban ghi AAAA) bao ENETUNREACH.
+        localAddress: '0.0.0.0',
         connectionTimeout: 10_000,
         greetingTimeout: 10_000,
         socketTimeout: 15_000,
