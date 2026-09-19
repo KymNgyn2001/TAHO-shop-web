@@ -127,26 +127,28 @@ export default function AdminProductsPage() {
                         {p.active ? 'Đang bán' : 'Đã ẩn'}
                       </span>
                     </td>
-                    <td style={{ display: 'flex', gap: '0.25rem' }}>
-                      <Link href={`/admin/products/${p.slug}/edit`} className="icon-btn" aria-label={`Sửa ${p.name}`}>
-                        <Pencil size={14} />
-                      </Link>
-                      <button
-                        type="button" className="icon-btn"
-                        aria-label={p.active ? `Ẩn ${p.name}` : `Hiện ${p.name}`}
-                        title={p.active ? 'Ẩn sản phẩm' : 'Hiện sản phẩm'}
-                        disabled={togglingId === p.id}
-                        onClick={() => toggleActive(p.id, p.name, !p.active)}
-                      >
-                        {p.active ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                      <button
-                        type="button" className="icon-btn" aria-label={`Xoá ${p.name}`}
-                        disabled={deletingId === p.id}
-                        onClick={() => remove(p.id, p.name)}
-                      >
-                        <Trash2 size={14} />
-                      </button>
+                    <td>
+                      <div style={{ display: 'flex', gap: '0.25rem' }}>
+                        <Link href={`/admin/products/${p.slug}/edit`} className="icon-btn" aria-label={`Sửa ${p.name}`}>
+                          <Pencil size={14} />
+                        </Link>
+                        <button
+                          type="button" className="icon-btn"
+                          aria-label={p.active ? `Ẩn ${p.name}` : `Hiện ${p.name}`}
+                          title={p.active ? 'Ẩn sản phẩm' : 'Hiện sản phẩm'}
+                          disabled={togglingId === p.id}
+                          onClick={() => toggleActive(p.id, p.name, !p.active)}
+                        >
+                          {p.active ? <EyeOff size={14} /> : <Eye size={14} />}
+                        </button>
+                        <button
+                          type="button" className="icon-btn" aria-label={`Xoá ${p.name}`}
+                          disabled={deletingId === p.id}
+                          onClick={() => remove(p.id, p.name)}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
