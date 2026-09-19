@@ -4,16 +4,17 @@ import { vietQrImageUrl } from './bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' đ';
 
+// Gmail SMTP — chay tot khi dev local, nhung Render goi mien phi CHAN cong SMTP (25/465/587)
+// nen tren production phai dung Brevo qua HTTPS (BREVO_API_KEY) ben duoi.
 // App Password Google hien thi kem dau cach ("abcd efgh ijkl mnop") — bo het khoang trang cho chac.
-const transporter =
+const smtp =
   env.emailUser && env.emailAppPassword
     ? nodemailer.createTransport({
         host: 'smtp.gmail.com',
         port: 465,
         secure: true,
         auth: { user: env.emailUser, pass: env.emailAppPassword.replace(/\s+/g, '') },
-        // Neu SMTP bi chan (VD Render goi mien phi chan cong 465/587) thi bao loi nhanh, khong treo 2 phut.
-        // Ep IPv4 (bind 0.0.0.0): Render khong co duong ra IPv6 nen smtp.gmail.com (ban ghi AAAA) bao ENETUNREACH.
+        // Ep IPv4 (bind 0.0.0.0): Render khong co duong ra IPv6.
         localAddress: '0.0.0.0',
         connectionTimeout: 10_000,
         greetingTimeout: 10_000,
@@ -21,9 +22,31 @@ const transporter =
       })
     : null;
 
+type MailOptions = { from?: string; to: string; subject: string; html: string };
+
+/** Gui qua API HTTPS cua Brevo (cong 443, khong bi chan). Nguoi gui phai la email da xac minh trong Brevo. */
+async function sendViaBrevo({ to, subject, html }: MailOptions): Promise<void> {
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': env.brevoApiKey, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { name: 'TAHO', email: env.emailSender || env.emailUser },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!res.ok) throw new Error(`Brevo ${res.status}: ${(await res.text()).slice(0, 300)}`);
+}
+
+// Giu nguyen giao dien sendMail() de cac ham gui mail ben duoi khong phai doi.
+const transporter: { sendMail: (o: MailOptions) => Promise<unknown> } | null = env.brevoApiKey
+  ? { sendMail: sendViaBrevo }
+  : smtp;
 if (!transporter) {
   // eslint-disable-next-line no-console
-  console.warn('[mailer] Thieu EMAIL_USER/EMAIL_APP_PASSWORD — bo qua gui email xac nhan don hang.');
+  console.warn('[mailer] Thieu BREVO_API_KEY (hoac EMAIL_USER/EMAIL_APP_PASSWORD) — bo qua gui email.');
 }
 
 type OrderForEmail = {
@@ -216,13 +239,13 @@ export async function sendPaymentReceivedEmail(
   }
 }
 
-export function mailStatus(): { configured: boolean; user: string } {
-  return { configured: transporter !== null, user: env.emailUser ? env.emailUser.replace(/^(.).*(@.*)$/, '$1***$2') : '' };
+export function mailStatus(): { configured: boolean; provider: string; user: string } {
+  return { configured: transporter !== null, provider: env.brevoApiKey ? 'brevo' : smtp ? 'gmail-smtp' : 'none', user: (env.emailSender || env.emailUser) ? (env.emailSender || env.emailUser).replace(/^(.).*(@.*)$/, '$1***$2') : '' };
 }
 
 /** Gui thu that va tra ve loi cu the (khac cac ham khac la nuot loi) — de chan doan vi sao khach khong nhan duoc mail. */
 export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
-  if (!transporter) return { ok: false, error: 'Chua cau hinh EMAIL_USER/EMAIL_APP_PASSWORD tren server.' };
+  if (!transporter) return { ok: false, error: 'Chua cau hinh BREVO_API_KEY (hoac EMAIL_USER/EMAIL_APP_PASSWORD) tren server.' };
   try {
     await transporter.sendMail({
       from: `"TAHO" <${env.emailUser}>`,

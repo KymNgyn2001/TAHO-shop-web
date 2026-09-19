@@ -21,6 +21,10 @@ export const env = {
   // (khong lam sap don hang), chi log canh bao. Xem README de biet cach lay App Password.
   emailUser: process.env.EMAIL_USER ?? '',
   emailAppPassword: process.env.EMAIL_APP_PASSWORD ?? '',
+  // Gui mail qua Brevo (HTTPS) — bat buoc tren Render mien phi vi SMTP bi chan. EMAIL_SENDER phai la
+  // email da xac minh trong Brevo (Senders & IP); de trong thi dung EMAIL_USER.
+  brevoApiKey: process.env.BREVO_API_KEY ?? '',
+  emailSender: process.env.EMAIL_SENDER ?? '',
   // Cloudflare R2 (luu anh san pham) — de trong thi fallback ve dia cuc bo (chi dung
   // cho dev, vi disk cua Render se bi xoa moi lan deploy lai).
   r2AccountId: process.env.R2_ACCOUNT_ID ?? '',
