@@ -66,7 +66,8 @@ bước này bắt buộc phải làm thủ công, nếu không sẽ gặp lỗi
 ## 4. Kiểm tra
 
 - Mở domain Vercel → thử đăng ký tài khoản mới, đăng nhập bằng tài khoản demo
-  (`manager@shop.test` / `Manager123!`), thêm sản phẩm vào giỏ, đặt hàng thử.
+  (tài khoản `manager@shop.test` do `npm run seed` tạo — mật khẩu được in ra 1 lần lúc seed,
+  hoặc đặt trước bằng biến `SEED_PASSWORD`), thêm sản phẩm vào giỏ, đặt hàng thử.
 - Nếu lỗi "Không kết nối được máy chủ": kiểm tra lại `NEXT_PUBLIC_API_URL` trên Vercel
   và `CORS_ORIGIN` trên Railway có khớp domain nhau không.
 - Nếu ảnh sản phẩm không hiện: kiểm tra `trust proxy` đã bật trong `shop-be/src/app.ts`
