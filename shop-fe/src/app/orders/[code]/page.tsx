@@ -7,7 +7,7 @@ import { api, ApiException } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
 import { useRequireRole, ALL_ROLES } from '@/lib/require-role';
 import { useAuth, isStaffRole } from '@/lib/auth-context';
-import { vietQrImageUrl, bankInfo, payosQrImageUrl } from '@/lib/bankQr';
+import { payosQrImageUrl } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -136,12 +136,16 @@ export default function OrderDetailPage() {
             Vui lòng chuyển khoản <strong>đúng số tiền {vnd(order.totalAmount)}</strong> và ghi đúng nội dung
             <strong> {order.code}</strong> (không sửa) để đơn được xác nhận tự động. Chuyển thiếu thì đơn chưa được xác nhận.
           </div>
-          <img
-            src={order.payQrData ? payosQrImageUrl(order.payQrData) : vietQrImageUrl(order.totalAmount, order.code)}
-            alt={`QR chuyển khoản ${bankInfo.bankName} ${bankInfo.accountNo}`}
-            className="bank-qr__img"
-          />
-          <p className="bank-qr__note">Quét mã bằng app ngân hàng bất kỳ — số tiền và nội dung đã được điền sẵn.</p>
+          {order.payQrData ? (
+            <>
+              <img src={payosQrImageUrl(order.payQrData)} alt="QR chuyển khoản" className="bank-qr__img" />
+              <p className="bank-qr__note">Quét mã bằng app ngân hàng bất kỳ — số tiền và nội dung đã được điền sẵn.</p>
+            </>
+          ) : (
+            <p className="bank-qr__note">
+              Đơn này chưa có mã QR chuyển khoản. Bạn liên hệ shop (0939 299 099) để được hỗ trợ, hoặc huỷ đơn ở cuối trang rồi đặt lại.
+            </p>
+          )}
           {order.payUrl && (
             <p className="bank-qr__note">
               Hoặc <a href={order.payUrl} target="_blank" rel="noreferrer">mở trang thanh toán</a> để chuyển khoản/quét mã.

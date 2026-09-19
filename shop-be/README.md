@@ -8,7 +8,7 @@ Stack: Node.js + Express + TypeScript + Prisma + PostgreSQL.
 ## Postgres cục bộ (máy Windows này)
 
 PostgreSQL 18 đã cài nhưng service Windows chưa được tạo (cần quyền admin) nên
-mình khởi tạo 1 cluster riêng ở `C:\Users\NGUYNT~1\pgdata-shop` (đường dẫn rút gọn
+mình khởi tạo 1 cluster riêng ở `C:\Users\<ten-user>\pgdata-shop` (đường dẫn rút gọn
 để né lỗi encoding của initdb với tên thư mục có dấu) và chạy thủ công bằng `pg_ctl`.
 
 **Mỗi lần mở máy lên muốn chạy BE, bật Postgres trước:**
@@ -33,7 +33,7 @@ Muốn service tự bật khi khởi động Windows (không phải gõ `npm run
 mở Command Prompt **as Administrator** rồi chạy:
 
 ```bash
-"C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe" register -N "postgresql-shop" -D "C:\Users\NGUYNT~1\pgdata-shop" -U "NT AUTHORITY\NetworkService"
+"C:\Program Files\PostgreSQL\18\bin\pg_ctl.exe" register -N "postgresql-shop" -D "C:\Users\<ten-user>\pgdata-shop" -U "NT AUTHORITY\NetworkService"
 sc start postgresql-shop
 ```
 

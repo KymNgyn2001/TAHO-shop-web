@@ -1,6 +1,5 @@
 import nodemailer from 'nodemailer';
 import { env } from './env';
-import { vietQrImageUrl } from './bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' đ';
 
@@ -76,11 +75,12 @@ function buildOrderEmailHtml(order: OrderForEmail): string {
     )
     .join('');
 
+  // Ma QR chuyen khoan la ma PayOS gan voi don (tao ngay sau khi dat), nen mail chi dan ve trang don hang de lay ma.
   const qrBlock =
     order.paymentMethod === 'BANK_TRANSFER'
       ? `<div style="margin:20px 0;text-align:center;">
-           <p style="font-size:14px;color:#333;">Vui lòng chuyển khoản và ghi nội dung <strong>${order.code}</strong>:</p>
-           <img src="${vietQrImageUrl(order.totalAmount, order.code)}" alt="QR chuyển khoản" style="max-width:220px;border:1px solid #eee;border-radius:8px;" />
+           <p style="font-size:14px;color:#333;">Vui lòng chuyển khoản <strong>đúng số tiền</strong> và giữ nguyên nội dung <strong>${order.code}</strong>.</p>
+           <p style="margin:16px 0;"><a href="${env.frontendUrl}/orders/${order.code}" style="background:#22201C;color:#fff;text-decoration:none;padding:12px 28px;border-radius:4px;display:inline-block;">Xem mã QR chuyển khoản</a></p>
          </div>`
       : '';
 
