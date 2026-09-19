@@ -23,6 +23,7 @@ export default function SiteHeader() {
   const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [catMenuOpen, setCatMenuOpen] = useState(false);
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [categories, setCategories] = useState<Category[]>([]);
@@ -61,7 +62,7 @@ export default function SiteHeader() {
             <button
               type="button"
               className="header-nav__trigger"
-              onClick={() => setCatMenuOpen((v) => !v)}
+              onClick={() => { setCatMenuOpen((v) => !v); setOpenGroup(null); }}
               aria-expanded={catMenuOpen}
             >
               Danh mục <ChevronDown size={13} strokeWidth={1.5} />
@@ -70,26 +71,30 @@ export default function SiteHeader() {
               <>
                 <button type="button" className="user-menu__scrim" aria-label="Đóng menu" onClick={() => setCatMenuOpen(false)} />
                 <div className="header-nav__dropdown header-nav__dropdown--grouped">
-                  {groupedCategories.map(({ group, items }) => (
-                    <div key={group} className="header-nav__group">
-                      <span className="header-nav__group-label">{group}</span>
-                      {items.map((c) => (
-                        <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
-                          {c.name}
-                        </Link>
-                      ))}
-                    </div>
-                  ))}
-                  {ungroupedCategories.length > 0 && (
-                    <div className="header-nav__group">
-                      <span className="header-nav__group-label">Khác</span>
-                      {ungroupedCategories.map((c) => (
-                        <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
-                          {c.name}
-                        </Link>
-                      ))}
-                    </div>
-                  )}
+                  {[
+                    ...groupedCategories,
+                    ...(ungroupedCategories.length > 0 ? [{ group: 'Khác', items: ungroupedCategories }] : []),
+                  ].map(({ group, items }) => {
+                    const open = openGroup === group;
+                    return (
+                      <div key={group} className="header-nav__group">
+                        <button
+                          type="button"
+                          className="header-nav__group-toggle"
+                          aria-expanded={open}
+                          onClick={() => setOpenGroup(open ? null : group)}
+                        >
+                          {group}
+                          <ChevronDown size={13} strokeWidth={1.5} className={open ? 'is-open' : ''} />
+                        </button>
+                        {open && items.map((c) => (
+                          <Link key={c.id} href={`/?categoryId=${c.id}`} onClick={() => setCatMenuOpen(false)}>
+                            {c.name}
+                          </Link>
+                        ))}
+                      </div>
+                    );
+                  })}
                 </div>
               </>
             )}
