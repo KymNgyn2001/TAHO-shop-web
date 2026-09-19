@@ -264,23 +264,28 @@ button { font: inherit; cursor: pointer; }
 
 .grid-products {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: var(--gutter) var(--gutter);
-  margin: var(--gutter) 0 0;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.75rem 1rem;
+  margin: 1.25rem 0 0;
 }
-@media (min-width: 768px) { .grid-products { grid-template-columns: repeat(3, 1fr); } }
-@media (min-width: 1040px) { .grid-products { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 768px) { .grid-products { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2.25rem 1.5rem; } }
+@media (min-width: 1040px) { .grid-products { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2.5rem 1.75rem; } }
 
 .pcard { display: block; }
 .pcard__media {
   position: relative;
   aspect-ratio: 3 / 4;
-  background: var(--wash);
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
   overflow: hidden;
 }
+/* contain: hien tron ca tam anh (khong cat), phan thua de nen sang. */
 .pcard__media img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
+  width: 100%; height: 100%; object-fit: contain; display: block;
+  transition: transform 0.35s ease;
 }
+.pcard:hover .pcard__media img { transform: scale(1.03); }
 .pcard__badge {
   position: absolute; left: 0; bottom: 0;
   background: var(--ink); color: var(--paper);
@@ -288,11 +293,11 @@ button { font: inherit; cursor: pointer; }
   padding: 3px 7px;
 }
 .pcard__body {
-  display: flex; justify-content: space-between; align-items: baseline;
-  gap: 0.75rem; padding: 0.625rem 0.25rem 1.5rem;
+  display: grid; gap: 0.25rem; padding: 0.75rem 0.125rem 0;
 }
 .pcard__name {
   font-size: var(--step-0); line-height: 1.35; margin: 0;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
 .pcard__price {
   font-size: var(--step-0); font-weight: 500;
@@ -309,8 +314,8 @@ button { font: inherit; cursor: pointer; }
 
 .detail__gallery { display: grid; gap: 0.6rem; }
 
-.detail__main-image { aspect-ratio: 3 / 4; background: var(--wash); overflow: hidden; }
-.detail__main-image img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.detail__main-image { aspect-ratio: 3 / 4; background: var(--paper); overflow: hidden; border-radius: 6px; }
+.detail__main-image img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
 .detail__thumbs {
   display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 2px;
@@ -320,7 +325,7 @@ button { font: inherit; cursor: pointer; }
   padding: 0; border: 2px solid transparent; background: var(--wash);
   overflow: hidden; opacity: 0.7;
 }
-.detail__thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.detail__thumb img { width: 100%; height: 100%; object-fit: contain; display: block; }
 .detail__thumb:hover { opacity: 1; }
 .detail__thumb[aria-pressed="true"] { border-color: var(--ink); opacity: 1; }
 
