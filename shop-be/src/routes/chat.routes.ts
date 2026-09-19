@@ -24,6 +24,7 @@ const ORDER_CODE_RE = /ORD-\d{8}-\d{4}/i;
 const MIN_MATCH_SCORE = 0.5;
 /** Nguong cao hon danh cho xoa san pham — tranh xoa nham vi khop mo ho. */
 const DELETE_MATCH_SCORE = 0.6;
+const MAX_CHAT_IMAGES = 9;
 
 const BUY_VERBS = ['lay', 'mua', 'dat', 'order', 'chot', 'chot don', 'cho minh', 'cho toi'];
 const CANCEL_WORDS = ['khoi', 'thoi khoi', 'bo di', 'huy', 'khong lay', 'doi y', 'thoi', 'bo'];
@@ -499,13 +500,19 @@ chatRouter.post(
       if (draft.step === 'IMAGE') {
         const images = draft.images ?? [];
         const isDone = matchesAnyWord(flat, ['xong', 'het anh', 'du anh', 'hoan tat']);
-        const looksLikeUrl = /^https?:\/\//i.test(message.trim());
+        // 1 tin nhan co the chua nhieu link anh (khay anh ben FE gui gop, moi link 1 dong).
+        const urls = [...new Set(message.match(/https?:\/\/[^\s"'<>]+/gi) ?? [])];
 
-        if (looksLikeUrl) {
-          const nextImages = [...images, { url: message.trim() }];
+        if (urls.length > 0) {
+          const nextImages = [...images, ...urls.map((url) => ({ url }))].slice(0, MAX_CHAT_IMAGES);
+          const added = nextImages.length - images.length;
+          const capped = images.length + urls.length > MAX_CHAT_IMAGES;
           return res.json({
             role: 'assistant',
-            content: `Đã nhận ảnh (${nextImages.length}). Gửi thêm ảnh khác hoặc nhắn "xong" khi đủ ảnh rồi.`,
+            content:
+              `Đã nhận ${added} ảnh (tổng ${nextImages.length}/${MAX_CHAT_IMAGES}).` +
+              (capped ? ` Mỗi sản phẩm tối đa ${MAX_CHAT_IMAGES} ảnh nên mình bỏ bớt phần dư.` : '') +
+              ' Gửi thêm ảnh khác hoặc nhắn "xong" khi đủ ảnh rồi.',
             expectingImage: true,
             context: { ...context, pendingProduct: { ...draft, images: nextImages } },
           });

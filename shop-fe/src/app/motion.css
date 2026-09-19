@@ -142,6 +142,43 @@
   background: var(--ink); color: #fff; font-size: 10px; padding: 2px 5px;
 }
 
+/* Khu "Hinh anh san pham" kieu Shopee — den/trang */
+.imgfield { display: grid; grid-template-columns: 170px 1fr; gap: 1rem; align-items: start; }
+.imgfield__label { font-size: var(--step--1); font-weight: 500; padding-top: 0.15rem; }
+.imgfield .req-dot { background: var(--ink); }
+.imgfield__hint { font-size: 0.8125rem; color: var(--muted); margin: 0.85rem 0 0; line-height: 1.5; }
+.radio-row--tight { margin-top: 0; margin-bottom: 0.9rem; }
+@media (max-width: 720px) { .imgfield { grid-template-columns: 1fr; gap: 0.5rem; } }
+
+.imgtiles { display: flex; flex-wrap: wrap; gap: 0.75rem; border-radius: 6px; }
+.imgtiles--hot { outline: 2px dashed var(--ink); outline-offset: 6px; background: var(--wash); }
+.imgtile {
+  position: relative; width: 112px; aspect-ratio: var(--ratio, 3 / 4); flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: 6px; background: var(--paper); overflow: hidden; padding: 0;
+}
+.imgtile img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.imgtile--drag { cursor: grab; outline: 2px solid transparent; outline-offset: 1px; transition: outline-color 0.1s ease; }
+.imgtile--drag:active { cursor: grabbing; }
+.imgtile--over { outline-color: var(--ink); }
+.imgtile__x {
+  position: absolute; top: 4px; right: 4px; width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%;
+  background: var(--ink); color: var(--paper); display: grid; place-items: center;
+}
+.imgtile__x:hover { opacity: 0.8; }
+.imgtile__badge {
+  position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 0; border: 0; text-align: center;
+  background: var(--ink); color: var(--paper); font-size: 11px; font-weight: 500;
+}
+.imgtile__badge--ghost { background: rgba(34,32,28,0.6); cursor: pointer; }
+.imgtile__badge--ghost:hover { background: var(--ink); }
+.imgtile--add {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.4rem;
+  border: 1px dashed var(--ink); background: transparent; color: var(--ink); cursor: pointer; padding: 0 0.5rem;
+}
+.imgtile--add span { font-size: 12px; line-height: 1.3; text-align: center; }
+.imgtile--add:hover:not(:disabled) { background: var(--wash); }
+.imgtile--add:disabled { opacity: 0.6; cursor: not-allowed; }
+
 /* Anh keo-tha doi cho (anh chung + anh rieng tung mau) */
 .thumb--drag { cursor: grab; transition: outline-color 0.1s ease; outline: 2px solid transparent; outline-offset: 1px; }
 .thumb--drag:active { cursor: grabbing; }

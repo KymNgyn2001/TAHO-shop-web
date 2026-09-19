@@ -3,13 +3,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Move, Plus, Trash2, X } from 'lucide-react';
+import { ImagePlus, Move, Plus, Trash2, X } from 'lucide-react';
 import { adminApi } from '@/lib/admin-api';
 import { ApiException } from '@/lib/api-client';
 import type { CategoryWithCount } from '@/lib/api-contract-admin';
 import type { ProductDetail } from '@/lib/api-contract';
 
 const MAX_MB = 10;
+const MAX_IMAGES = 9;
 
 type Audience = 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
 type ColorImage = { url: string; name: string };
@@ -107,6 +108,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   const [images, setImages] = useState<{ url: string; name: string }[]>(seed?.generalImages ?? []);
   const [uploading, setUploading] = useState(false);
   const [hot, setHot] = useState(false);
+  const [ratio, setRatio] = useState<'3 / 4' | '1 / 1'>('3 / 4');
   const fileRef = useRef<HTMLInputElement>(null);
 
   // --- bang size ---
@@ -163,9 +165,12 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   async function upload(files: FileList | null) {
     if (!files?.length) return;
     setError(null);
+    const picked = Array.from(files).filter((f) => f.type.startsWith('image/'));
+    const room = MAX_IMAGES - images.length;
+    if (picked.length > room) setError(`Mỗi sản phẩm tối đa ${MAX_IMAGES} ảnh chung — mình chỉ nhận ${Math.max(room, 0)} ảnh đầu tiên.`);
     setUploading(true);
     try {
-      for (const file of Array.from(files)) {
+      for (const file of picked.slice(0, Math.max(room, 0))) {
         if (file.size > MAX_MB * 1024 * 1024) {
           setError(`${file.name} nặng hơn ${MAX_MB}MB. Nén lại rồi thử tiếp.`);
           continue;
@@ -471,86 +476,99 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
         </ul>
       </div>
 
-      {/* ---------- Ảnh chung ---------- */}
+      {/* ---------- Hình ảnh sản phẩm ---------- */}
       <section className="panel">
-        <h2>Ảnh chung (ảnh bìa mặc định)</h2>
-        <div
-          className={`dropbox${hot ? ' dropbox--hot' : ''}`}
-          onDragOver={(e) => { e.preventDefault(); setHot(true); }}
-          onDragLeave={() => setHot(false)}
-          onDrop={(e) => { e.preventDefault(); setHot(false); upload(e.dataTransfer.files); }}
-          onClick={() => fileRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && fileRef.current?.click()}
-        >
-          {uploading
-            ? 'Đang tải lên…'
-            : `Kéo ảnh vào đây hoặc bấm để chọn. JPG, PNG, WEBP, tối đa ${MAX_MB}MB mỗi tấm.`}
-        </div>
-        <input
-          ref={fileRef} type="file" accept="image/*" multiple hidden
-          onChange={(e) => upload(e.target.files)}
-        />
+        <h2>Thông tin cơ bản</h2>
+        <div className="imgfield">
+          <div className="imgfield__label"><i className="req-dot" /> Hình ảnh sản phẩm</div>
+          <div className="imgfield__body">
+            <div className="radio-row radio-row--tight" role="radiogroup" aria-label="Tỷ lệ khung ảnh">
+              {(['3 / 4', '1 / 1'] as const).map((r) => (
+                <label key={r} className="radio">
+                  <input type="radio" name="imgRatio" checked={ratio === r} onChange={() => setRatio(r)} />
+                  <span>Khung ảnh tỷ lệ {r.replace(' / ', ':')}</span>
+                </label>
+              ))}
+            </div>
 
-        {images.length > 0 && (
-          <>
-            <div className="thumbs">
+            <div
+              className={`imgtiles${hot ? ' imgtiles--hot' : ''}`}
+              style={{ ['--ratio' as string]: ratio }}
+              onDragOver={(e) => {
+                if (!imgDragRef.current && e.dataTransfer.types.includes('Files')) { e.preventDefault(); setHot(true); }
+              }}
+              onDragLeave={() => setHot(false)}
+              onDrop={(e) => {
+                setHot(false);
+                if (imgDragRef.current || !e.dataTransfer.types.includes('Files')) return;
+                e.preventDefault();
+                upload(e.dataTransfer.files);
+              }}
+            >
               {images.map((im, i) => (
                 <div
-                  className={`thumb thumb--drag${imgOver === imgKey('general', i) ? ' thumb--over' : ''}`}
+                  className={`imgtile imgtile--drag${imgOver === imgKey('general', i) ? ' imgtile--over' : ''}`}
                   key={im.url}
                   title="Kéo để đổi vị trí ảnh"
                   {...imgDnd('general', i)}
                 >
                   <img src={im.url} alt={im.name} draggable={false} />
                   <button
-                    type="button"
+                    type="button" className="imgtile__x"
                     onClick={() => setImages((p) => p.filter((_, j) => j !== i))}
                     aria-label={`Xoá ${im.name}`}
                   >
                     <X size={12} />
                   </button>
                   {i === 0
-                    ? <span className="thumb__main">Ảnh chính</span>
-                    : <span
-                        className="thumb__main"
-                        style={{ background: 'transparent', color: '#fff', cursor: 'pointer' }}
-                        onClick={() => makeMain(i)}
-                      >Đặt chính</span>}
+                    ? <span className="imgtile__badge">Ảnh chính</span>
+                    : <button type="button" className="imgtile__badge imgtile__badge--ghost" onClick={() => makeMain(i)}>Đặt chính</button>}
                 </div>
               ))}
+              {images.length < MAX_IMAGES && (
+                <button
+                  type="button" className="imgtile imgtile--add"
+                  onClick={() => fileRef.current?.click()} disabled={uploading}
+                >
+                  <ImagePlus size={26} strokeWidth={1.5} />
+                  <span>{uploading ? 'Đang tải…' : `Thêm hình ảnh (${images.length}/${MAX_IMAGES})`}</span>
+                </button>
+              )}
             </div>
-            <p style={{ fontSize: '0.8125rem', color: 'var(--muted)', marginTop: '0.5rem' }}>
-              Kéo ảnh để đổi vị trí — ảnh đứng đầu là ảnh chính, hiện ở trang chủ. Đây là ảnh dùng chung khi khách chưa chọn màu nào cụ thể.
+            <input
+              ref={fileRef} type="file" accept="image/*" multiple hidden
+              onChange={(e) => upload(e.target.files)}
+            />
+            <p className="imgfield__hint">
+              JPG, PNG, WEBP, tối đa {MAX_MB}MB mỗi ảnh, tối đa {MAX_IMAGES} ảnh. Chọn được nhiều ảnh cùng lúc hoặc kéo ảnh từ máy vào khung.
+              Kéo các ảnh để đổi vị trí — ảnh đứng đầu là ảnh chính, hiện ở trang chủ; đây cũng là ảnh dùng chung khi khách chưa chọn màu.
+              Khung 1:1 / 3:4 chỉ là khung xem trước, ảnh luôn được hiện đầy đủ trên trang bán hàng.
             </p>
-          </>
-        )}
+          </div>
+        </div>
       </section>
 
       {/* ---------- Bảng size ---------- */}
       <section className="panel">
         <h2>Bảng size (không bắt buộc)</h2>
-        <div
-          className={`dropbox${uploadingChart ? ' dropbox--hot' : ''}`}
-          onClick={() => chartFileRef.current?.click()}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => e.key === 'Enter' && chartFileRef.current?.click()}
-        >
-          {uploadingChart ? 'Đang tải lên…' : sizeChart ? `Đã chọn: ${sizeChart.name} — bấm để đổi ảnh khác` : 'Bấm để chọn ảnh bảng size (JPG, PNG, WEBP)'}
-        </div>
-        <input ref={chartFileRef} type="file" accept="image/*" hidden onChange={(e) => uploadSizeChart(e.target.files)} />
-        {sizeChart && (
-          <div className="thumbs">
-            <div className="thumb">
-              <img src={sizeChart.url} alt="Bảng size" />
-              <button type="button" onClick={() => setSizeChart(null)} aria-label="Xoá bảng size">
+        <div className="imgtiles" style={{ ['--ratio' as string]: '3 / 4' }}>
+          {sizeChart && (
+            <div className="imgtile">
+              <img src={sizeChart.url} alt="Bảng size" draggable={false} />
+              <button type="button" className="imgtile__x" onClick={() => setSizeChart(null)} aria-label="Xoá bảng size">
                 <X size={12} />
               </button>
             </div>
-          </div>
-        )}
+          )}
+          <button
+            type="button" className="imgtile imgtile--add"
+            onClick={() => chartFileRef.current?.click()} disabled={uploadingChart}
+          >
+            <ImagePlus size={26} strokeWidth={1.5} />
+            <span>{uploadingChart ? 'Đang tải…' : sizeChart ? 'Đổi ảnh khác' : 'Thêm bảng size'}</span>
+          </button>
+        </div>
+        <input ref={chartFileRef} type="file" accept="image/*" hidden onChange={(e) => uploadSizeChart(e.target.files)} />
       </section>
 
       {/* ---------- Loại ---------- */}
