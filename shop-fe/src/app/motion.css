@@ -142,6 +142,11 @@
   background: var(--ink); color: #fff; font-size: 10px; padding: 2px 5px;
 }
 
+/* Cum nut cuoi form san pham: Huy (nho) + Luu (lon) */
+.form-actions { display: grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; }
+.form-actions .btn-secondary, .form-actions .btn-primary { height: 52px; }
+@media (max-width: 480px) { .form-actions { grid-template-columns: 1fr; } }
+
 /* Khu "Hinh anh san pham" kieu Shopee — den/trang */
 .imgfield { display: grid; grid-template-columns: 170px 1fr; gap: 1rem; align-items: start; }
 .imgfield__label { font-size: var(--step--1); font-weight: 500; padding-top: 0.15rem; }

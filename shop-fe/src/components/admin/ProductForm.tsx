@@ -370,6 +370,25 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   const setCell = (key: string, patch: Partial<Cell>) =>
     setCells((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyCell()), ...patch } }));
 
+  // ---------------- huy thay doi ----------------
+
+  // "Anh chup" toan bo noi dung form luc moi mo — so voi hien tai de biet nhan vien da sua gi chua,
+  // chi hoi xac nhan khi that su co thay doi chua luu.
+  const formSnapshot = JSON.stringify({
+    name, basePrice, material, description, audience, categoryId,
+    images: images.map((i) => i.url), sizeChart: sizeChart?.url ?? null,
+    colors: colors.map((c) => [c.name, c.hex, c.images.map((i) => i.url)]),
+    sizes: sizeRows.map((r) => r.value), cells,
+  });
+  const initialSnapshot = useRef<string | null>(null);
+  useEffect(() => { initialSnapshot.current = formSnapshot; }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function cancelChanges() {
+    const dirty = initialSnapshot.current !== null && initialSnapshot.current !== formSnapshot;
+    if (dirty && !window.confirm('Bạn có thay đổi chưa lưu. Hủy thay đổi và quay về danh sách sản phẩm?')) return;
+    router.push('/admin/products');
+  }
+
   // ---------------- luu ----------------
 
   const validColors = colors.filter((c) => !colorEmpty(c)).map((c) => ({ ...c, name: c.name.trim() }));
@@ -913,11 +932,16 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
         </section>
       )}
 
-      <button type="button" className="btn-primary" disabled={!ready || saving} onClick={save}>
-        {saving
-          ? 'Đang lưu…'
-          : mode === 'edit' ? 'Lưu thay đổi' : 'Lưu sản phẩm'}
-      </button>
+      <div className="form-actions">
+        <button type="button" className="btn-secondary" disabled={saving} onClick={cancelChanges}>
+          {mode === 'edit' ? 'Hủy thay đổi' : 'Hủy'}
+        </button>
+        <button type="button" className="btn-primary" disabled={!ready || saving} onClick={save}>
+          {saving
+            ? 'Đang lưu…'
+            : mode === 'edit' ? 'Lưu thay đổi' : 'Lưu sản phẩm'}
+        </button>
+      </div>
       {!ready && (
         <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', margin: '0.6rem 0 0' }}>
           Còn thiếu: {missing.join(', ')}.
