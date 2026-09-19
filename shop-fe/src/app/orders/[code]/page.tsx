@@ -207,11 +207,23 @@ export default function OrderDetailPage() {
           <div className="field">
             <label htmlFor="reason">Lý do huỷ đơn</label>
             <textarea id="reason" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button type="button" className="btn-secondary" onClick={cancel} disabled={cancelling || !reason.trim()}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <button
+                type="button"
+                className="btn-secondary"
+                onClick={() => setShowCancelForm(false)}
+                disabled={cancelling}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn-secondary btn-secondary--solid"
+                onClick={cancel}
+                disabled={cancelling || !reason.trim()}
+              >
                 {cancelling ? 'Đang huỷ…' : 'Xác nhận huỷ đơn'}
               </button>
-              <button type="button" className="chip" onClick={() => setShowCancelForm(false)}>Thôi</button>
             </div>
           </div>
         ) : (

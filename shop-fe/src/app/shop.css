@@ -20,6 +20,9 @@
 }
 .btn-secondary:hover { background: var(--wash); }
 .btn-secondary:disabled { border-color: var(--line); color: var(--muted); cursor: not-allowed; }
+.btn-secondary--solid { background: var(--ink); color: var(--paper); }
+.btn-secondary--solid:hover { background: var(--ink); opacity: 0.85; }
+.btn-secondary--solid:disabled { background: transparent; }
 
 /* ---------- O tim kiem dropdown tren header ---------- */
 
