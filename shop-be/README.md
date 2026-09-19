@@ -64,6 +64,36 @@ rồi chạy lại `npm run dev` bên `shop-fe` — không cần sửa dòng UI 
 | EMPLOYEE  | employee@shop.test    | Employee123!   |
 | CUSTOMER  | customer@shop.test    | Customer123!   |
 
+> Các tài khoản demo trên chỉ để chạy thử. **Không dùng lại mật khẩu này trên production** —
+> đổi mật khẩu (menu tài khoản → "Đổi mật khẩu") hoặc xoá mềm các tài khoản demo sau khi deploy.
+
+## Tài khoản ADMIN
+
+Admin là vai trò cao nhất: làm được mọi việc của manager và là vai trò duy nhất tạo/quản lý
+tài khoản Manager (menu "Quản lý tài khoản"). **Mật khẩu admin không ghi trong repo** (repo công khai).
+
+- **Production (Render):** thêm 2 biến môi trường, server tự tạo tài khoản khi khởi động
+  (nếu email đã có thì chỉ nâng lên ADMIN, không đổi mật khẩu):
+  ```
+  ADMIN_EMAIL=<email đăng nhập admin>
+  ADMIN_PASSWORD=<mật khẩu admin — đặt mạnh, không dùng chung với nơi khác>
+  ```
+  Đăng nhập xong nên đổi lại mật khẩu ở menu "Đổi mật khẩu".
+- **Local:** `npm run seed` tạo `admin@shop.test` (mật khẩu ghi trong `prisma/seed.ts`, chỉ dùng cho DB local).
+
+## Gửi email (xác nhận đơn, thanh toán, quên mật khẩu)
+
+Render bản miễn phí **chặn cổng SMTP** nên Gmail SMTP không chạy được trên production. Dùng Brevo (HTTPS):
+
+```
+BREVO_API_KEY=<API key trong Brevo → SMTP & API → API keys>
+EMAIL_SENDER=<email gửi đi, đã xác minh trong Brevo → Senders>
+```
+
+Trên Brevo phải **tắt chặn IP lạ** (Security → Authorised IPs) vì Render không có IP cố định.
+Kiểm tra sau khi deploy: đăng nhập manager/admin, gọi `POST /api/admin/email-test` với `{"to":"<email>"}`
+để thấy lỗi gửi mail thật (nếu có). Chạy local có thể dùng `EMAIL_USER` + `EMAIL_APP_PASSWORD` (Gmail App Password).
+
 Mã giảm giá mẫu: `WELCOME10` (giảm 10%, đơn tối thiểu 300k), `FREESHIP30` (giảm cố định 30k).
 
 ## Vai trò & quyền
