@@ -174,3 +174,35 @@ export async function sendPaymentShortfallEmail(
     console.error('[mailer] Gui email thieu tien that bai:', e);
   }
 }
+
+/** Bao khach da nhan du tien va don da duoc xac nhan (chuyen khoan/MoMo). */
+export async function sendPaymentReceivedEmail(
+  to: string,
+  info: { code: string; receiverName: string; paid: number; total: number },
+): Promise<void> {
+  if (!transporter) return;
+  const extra = info.paid - info.total;
+  try {
+    await transporter.sendMail({
+      from: `"TAHO" <${env.emailUser}>`,
+      to,
+      subject: `Đã nhận thanh toán đơn ${info.code} — TAHO`,
+      html: `
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#22201C;">
+          <div style="background:#22201C;color:#fff;padding:20px;text-align:center;">
+            <span style="font-size:22px;font-weight:bold;letter-spacing:1px;">TAHO</span>
+          </div>
+          <div style="padding:24px 20px;font-size:14px;line-height:1.6;">
+            <h2 style="margin:0 0 12px;font-weight:500;">Thanh toán thành công</h2>
+            <p>Chào ${info.receiverName}, mình đã nhận được <strong>${vnd(info.paid)}</strong> cho đơn <strong>${info.code}</strong>
+            (giá trị đơn ${vnd(info.total)}). Đơn của bạn đã được <strong>xác nhận</strong> và shop sẽ chuẩn bị giao hàng sớm nhất.</p>
+            ${extra > 0 ? `<p style="background:#f5f5f4;padding:10px 12px;border-radius:4px;">Bạn đã chuyển dư <strong>${vnd(extra)}</strong>. Shop sẽ liên hệ để hoàn lại phần dư cho bạn.</p>` : ''}
+            <p style="color:#888;font-size:12px;">Cần hỗ trợ? Liên hệ 0939 299 099 · tahowear@gmail.com</p>
+          </div>
+        </div>`,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[mailer] Gui email da nhan thanh toan that bai:', e);
+  }
+}
