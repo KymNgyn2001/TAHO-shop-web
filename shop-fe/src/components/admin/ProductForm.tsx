@@ -3,7 +3,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Plus, X } from 'lucide-react';
+import { Move, Plus, Trash2, X } from 'lucide-react';
 import { adminApi } from '@/lib/admin-api';
 import { ApiException } from '@/lib/api-client';
 import type { CategoryWithCount } from '@/lib/api-contract-admin';
@@ -13,13 +13,33 @@ const MAX_MB = 10;
 
 type Audience = 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX';
 type ColorImage = { url: string; name: string };
-type ColorGroup = { id: string; name: string; images: ColorImage[] };
+type ColorGroup = { id: string; name: string; hex: string; images: ColorImage[] };
+type SizeRow = { id: string; value: string };
 
-const newColor = (): ColorGroup => ({
-  id: Math.random().toString(36).slice(2),
-  name: '',
-  images: [],
-});
+const rid = () => Math.random().toString(36).slice(2);
+const newColor = (): ColorGroup => ({ id: rid(), name: '', hex: '', images: [] });
+const newSizeRow = (value = ''): SizeRow => ({ id: rid(), value });
+
+/** Luon giu 1 o trong o cuoi danh sach de nhan vien go tiep — go xong o cuoi thi o moi tu hien ra. */
+function withTrailingEmpty<T>(list: T[], isEmpty: (x: T) => boolean, make: () => T): T[] {
+  const last = list[list.length - 1];
+  return last && isEmpty(last) ? list : [...list, make()];
+}
+const colorEmpty = (c: ColorGroup) => c.name.trim() === '';
+const sizeEmpty = (r: SizeRow) => r.value.trim() === '';
+const HEX_RE = /^#[0-9a-f]{6}$/i;
+
+/** Goi y size theo "loai size" nhan vien chon (chi de bam chon nhanh, khong luu vao DB). */
+const SIZE_TYPES = [
+  { key: 'intl', label: 'Size (Quốc Tế)', presets: ['S', 'M', 'L', 'XL', '2XL', '3XL'] },
+  { key: 'us', label: 'Size (US)', presets: ['6', '7', '8', '9', '10', '11', '12'] },
+  { key: 'inch', label: 'Size (Inch)', presets: ['28', '29', '30', '31', '32', '33', '34'] },
+  { key: 'eu', label: 'Size (EU)', presets: ['36', '37', '38', '39', '40', '41', '42', '43', '44'] },
+  { key: 'age', label: 'Size (Tuổi)', presets: ['2', '4', '6', '8', '10', '12'] },
+  { key: 'cm', label: 'Size (cm)', presets: ['150', '155', '160', '165', '170', '175', '180'] },
+  { key: 'mm', label: 'Size (mm)', presets: ['230', '240', '250', '260', '270', '280'] },
+  { key: 'custom', label: 'Tùy chỉnh', presets: [] as string[] },
+] as const;
 
 type Cell = { priceOverride: string; stockQty: string; sku: string };
 const emptyCell = (): Cell => ({ priceOverride: '', stockQty: '0', sku: '' });
@@ -29,8 +49,6 @@ const cellKey = (color: string, size: string) => `${color}::${size}`;
 /** "Áo Đen" -> "AO-DEN": dung ghep SKU tu tien to chung + mau + size. */
 const skuPart = (s: string) =>
   s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-const PRESET_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
 const fileNameOf = (url: string) => url.split('/').pop() ?? url;
 
@@ -47,11 +65,8 @@ function buildInitialState(initial: ProductDetail) {
     const images = initial.images
       .filter((im) => im.color === colorName)
       .map((im) => ({ url: im.url, name: fileNameOf(im.url) }));
-    return {
-      id: Math.random().toString(36).slice(2),
-      name: colorName,
-      images,
-    };
+    const hex = initial.variants.find((v) => v.color === colorName)?.colorHex ?? '';
+    return { id: rid(), name: colorName, hex, images };
   });
 
   const sizeOrder: string[] = [];
@@ -69,7 +84,12 @@ function buildInitialState(initial: ProductDetail) {
     };
   }
 
-  return { generalImages, colors: colors.length > 0 ? colors : [newColor()], sizes: sizeOrder, cells };
+  return {
+    generalImages,
+    colors: withTrailingEmpty(colors, colorEmpty, newColor),
+    sizeRows: withTrailingEmpty(sizeOrder.map((s) => newSizeRow(s)), sizeEmpty, newSizeRow),
+    cells,
+  };
 }
 
 interface ProductFormProps {
@@ -114,7 +134,9 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   const [uploadingColorId, setUploadingColorId] = useState<string | null>(null);
 
   // --- size ---
-  const [sizes, setSizes] = useState<string[]>(seed?.sizes ?? []);
+  const [sizeRows, setSizeRows] = useState<SizeRow[]>(seed?.sizeRows ?? [newSizeRow()]);
+  const [sizeType, setSizeType] = useState<(typeof SIZE_TYPES)[number]['key']>('intl');
+  const dragRef = useRef<{ list: 'color' | 'size'; index: number } | null>(null);
 
   // --- ma tran gia / ton kho theo (mau, size) ---
   const [cells, setCells] = useState<Record<string, Cell>>(seed?.cells ?? {});
@@ -204,7 +226,30 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   // ---------------- mau sac ----------------
 
   const updateColor = (id: string, patch: Partial<ColorGroup>) =>
-    setColors((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+    setColors((prev) =>
+      withTrailingEmpty(prev.map((c) => (c.id === id ? { ...c, ...patch } : c)), colorEmpty, newColor),
+    );
+
+  const removeColor = (id: string) =>
+    setColors((prev) => withTrailingEmpty(prev.filter((c) => c.id !== id), colorEmpty, newColor));
+
+  /** Keo-tha doi cho: dung chung cho danh sach mau va size (thu tu quyet dinh thu tu hien o trang san pham). */
+  function moveItem<T>(setList: (fn: (prev: T[]) => T[]) => void, from: number, to: number) {
+    if (from === to) return;
+    setList((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  }
+  const dropOn = (list: 'color' | 'size', to: number) => {
+    const d = dragRef.current;
+    dragRef.current = null;
+    if (!d || d.list !== list) return;
+    if (list === 'color') moveItem<ColorGroup>(setColors, d.index, to);
+    else moveItem<SizeRow>(setSizeRows, d.index, to);
+  };
 
   function pickColorImages(colorId: string) {
     const input = document.createElement('input');
@@ -242,10 +287,21 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   // ---------------- size ----------------
 
-  const toggleSize = (s: string) =>
-    setSizes((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]));
+  const updateSizeRow = (id: string, value: string) =>
+    setSizeRows((prev) => withTrailingEmpty(prev.map((r) => (r.id === id ? { ...r, value } : r)), sizeEmpty, newSizeRow));
 
-  const removeSize = (s: string) => setSizes((prev) => prev.filter((x) => x !== s));
+  const removeSizeRow = (id: string) =>
+    setSizeRows((prev) => withTrailingEmpty(prev.filter((r) => r.id !== id), sizeEmpty, newSizeRow));
+
+  /** Nut goi y (S, M, L...): bam lan dau them size, bam lan nua bo size do. */
+  const togglePresetSize = (s: string) =>
+    setSizeRows((prev) => {
+      const has = prev.some((r) => r.value.trim() === s);
+      const next = has
+        ? prev.filter((r) => r.value.trim() !== s)
+        : [...prev.filter((r) => !sizeEmpty(r)), newSizeRow(s)];
+      return withTrailingEmpty(next, sizeEmpty, newSizeRow);
+    });
 
   // ---------------- ap dung ton kho hang loat ----------------
 
@@ -278,10 +334,14 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   // ---------------- luu ----------------
 
-  const validColors = colors.filter((c) => c.name.trim() !== '');
-  const validSizes = sizes.filter(Boolean);
-  const extraSizes = sizes.filter((s) => !PRESET_SIZES.includes(s));
+  const validColors = colors.filter((c) => !colorEmpty(c)).map((c) => ({ ...c, name: c.name.trim() }));
+  const validSizes = sizeRows.filter((r) => !sizeEmpty(r)).map((r) => r.value.trim());
+  const activePresets: readonly string[] = SIZE_TYPES.find((t) => t.key === sizeType)?.presets ?? [];
   const hasAnyImage = images.length > 0 || validColors.some((c) => c.images.length > 0);
+  const lowerKey = (s: string) => s.toLowerCase();
+  const dupColors = new Set(validColors.map((c) => lowerKey(c.name))).size !== validColors.length;
+  const dupSizes = new Set(validSizes.map(lowerKey)).size !== validSizes.length;
+  const badHex = validColors.some((c) => c.hex.trim() !== '' && !HEX_RE.test(c.hex.trim()));
 
   // Liet ke cu the con thieu gi de nhan vien khong phai doan vi sao nut Luu bi khoa.
   const missing = [
@@ -291,6 +351,9 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
     !hasAnyImage && 'ít nhất 1 ảnh',
     validColors.length === 0 && 'ít nhất 1 màu (có tên)',
     validSizes.length === 0 && 'ít nhất 1 size',
+    dupColors && 'tên màu không được trùng nhau',
+    dupSizes && 'size không được trùng nhau',
+    badHex && 'mã màu dạng #RRGGBB (vd #1A1A1A) hoặc để trống',
   ].filter(Boolean) as string[];
   const ready = missing.length === 0;
 
@@ -309,6 +372,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
           return {
             size: s,
             color: c.name,
+            colorHex: c.hex.trim() || undefined,
             priceOverride: cell.priceOverride ? Number(cell.priceOverride) : undefined,
             stockQty: Number(cell.stockQty || 0),
             sku: cell.sku.trim() || undefined,
@@ -342,7 +406,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       setSizeChart(null);
       setAudience('UNISEX');
       setColors([newColor()]);
-      setSizes([]);
+      setSizeRows([newSizeRow()]);
       setCells({});
       setCategoryId(null);
     } catch (e) {
@@ -527,91 +591,137 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
         </div>
       </section>
 
-      {/* ---------- Màu sắc ---------- */}
+      {/* ---------- Thông tin bán hàng: phân loại hàng (màu / size) ---------- */}
       <section className="panel">
-        <h2>Màu sắc</h2>
-        <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '-0.5rem', marginBottom: '1rem' }}>
-          Mỗi màu có thể có ảnh riêng — khách chọn màu nào thì trang sản phẩm đổi sang ảnh của màu đó.
-        </p>
-        <div style={{ display: 'grid', gap: '1rem' }}>
-          {colors.map((c) => (
-            <div key={c.id} style={{ border: '1px solid var(--line)', borderRadius: 4, padding: '0.85rem' }}>
-              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <input
-                  value={c.name}
-                  onChange={(e) => updateColor(c.id, { name: e.target.value })}
-                  placeholder="Tên màu, vd: Đen"
-                  style={{ flex: 1, border: '1px solid var(--line)', borderRadius: 4, padding: '0.5rem 0.7rem', font: 'inherit' }}
-                />
-                {colors.length > 1 && (
-                  <button
-                    type="button" className="icon-btn" aria-label={`Xoá màu ${c.name || ''}`}
-                    onClick={() => setColors((prev) => prev.filter((x) => x.id !== c.id))}
-                  >
-                    <X size={14} />
-                  </button>
-                )}
-              </div>
+        <h2>Thông tin bán hàng</h2>
+        <p className="variant-label"><i className="req-dot" /> Phân loại hàng</p>
 
-              <div className="thumbs">
-                {c.images.map((im) => (
-                  <div className="thumb" key={im.url}>
-                    <img src={im.url} alt={im.name} />
-                    <button type="button" onClick={() => removeColorImage(c.id, im.url)} aria-label={`Xoá ${im.name}`}>
-                      <X size={12} />
-                    </button>
+        {/* ----- Phân loại 1: Màu sắc ----- */}
+        <div className="vgroup">
+          <label className="vgroup__title" htmlFor="vg1">Phân loại 1</label>
+          <input id="vg1" className="vgroup__name" value="Màu sắc" readOnly />
+          <p className="vgroup__sub">Tùy chọn <i className="req-dot" /></p>
+          <datalist id="color-suggest">
+            {['Đen', 'Trắng', 'Xám', 'Be', 'Kem', 'Nâu', 'Đỏ', 'Hồng', 'Xanh lá', 'Xanh dương', 'Xanh navy'].map((n) => (
+              <option key={n} value={n} />
+            ))}
+          </datalist>
+          <div className="opt-grid">
+            {colors.map((c, i) => {
+              const empty = colorEmpty(c);
+              const hexOk = HEX_RE.test(c.hex.trim());
+              const hexBad = c.hex.trim() !== '' && !hexOk;
+              return (
+                <div key={c.id} className="opt-row" onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn('color', i)}>
+                  <div className="opt-cell">
+                    <input
+                      className="opt-cell__main" list="color-suggest"
+                      value={c.name} placeholder="Nhập hoặc chọn" aria-label={`Màu ${i + 1}`}
+                      onChange={(e) => updateColor(c.id, { name: e.target.value })}
+                    />
+                    <div className={`opt-cell__side${hexBad ? ' opt-cell__side--bad' : ''}`}>
+                      <label className="opt-swatch" title="Chọn màu hiển thị cho nút màu">
+                        <i style={hexOk ? { background: c.hex.trim() } : undefined} />
+                        <input
+                          type="color" disabled={empty} tabIndex={-1}
+                          value={hexOk ? c.hex.trim() : '#000000'}
+                          onChange={(e) => updateColor(c.id, { hex: e.target.value.toUpperCase() })}
+                        />
+                      </label>
+                      <input
+                        value={c.hex} disabled={empty} maxLength={7}
+                        placeholder="Mã màu #RRGGBB" aria-label={`Mã màu ${c.name || i + 1}`}
+                        onChange={(e) => updateColor(c.id, { hex: e.target.value })}
+                      />
+                    </div>
                   </div>
-                ))}
-                <button
-                  type="button"
-                  className="thumb thumb--add"
-                  onClick={() => pickColorImages(c.id)}
-                  disabled={uploadingColorId === c.id}
-                  aria-label={`Thêm ảnh cho màu ${c.name || ''}`}
-                >
-                  <Plus size={18} />
-                  <span>{uploadingColorId === c.id ? 'Đang tải…' : 'Thêm ảnh'}</span>
-                </button>
-              </div>
-            </div>
-          ))}
+                  {empty ? (
+                    <span className="opt-spacer" />
+                  ) : (
+                    <>
+                      <span
+                        className="opt-icon opt-icon--drag" draggable title="Kéo để đổi thứ tự"
+                        onDragStart={() => { dragRef.current = { list: 'color', index: i }; }}
+                      >
+                        <Move size={16} />
+                      </span>
+                      <button type="button" className="opt-icon" aria-label={`Xoá màu ${c.name}`} onClick={() => removeColor(c.id)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="vgroup__hint">
+            Gõ xong 1 màu thì ô mới tự hiện ra để nhập màu tiếp theo. Mã màu (không bắt buộc) dùng để vẽ chấm màu trên nút chọn màu ở trang sản phẩm.
+            Ảnh riêng của từng màu thêm ở bảng “Danh sách phân loại hàng” bên dưới.
+          </p>
         </div>
-        <button type="button" className="chip chip--solid" style={{ marginTop: '0.85rem' }} onClick={() => setColors((p) => [...p, newColor()])}>
-          <Plus size={14} style={{ verticalAlign: '-2px' }} /> Thêm màu
-        </button>
-      </section>
 
-      {/* ---------- Size ---------- */}
-      <section className="panel">
-        <h2>Size</h2>
-        <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '-0.5rem', marginBottom: '1rem' }}>
-          Bấm vào size để bật/tắt — sản phẩm sẽ có đúng những size đang bật.
-        </p>
-        <div className="tag-row">
-          {PRESET_SIZES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              className="tag"
-              aria-pressed={sizes.includes(s)}
-              onClick={() => toggleSize(s)}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-        {extraSizes.length > 0 && (
-          <div className="tag-row" style={{ marginTop: '0.6rem' }}>
-            {extraSizes.map((s) => (
-              <span key={s} className="tag" aria-pressed="true">
-                {s}
-                <button type="button" onClick={() => removeSize(s)} aria-label={`Xoá size ${s}`} style={{ border: 0, background: 'none', cursor: 'pointer', display: 'inline-flex' }}>
-                  <X size={12} />
-                </button>
-              </span>
+        {/* ----- Phân loại 2: Size ----- */}
+        <div className="vgroup">
+          <label className="vgroup__title" htmlFor="vg2">Phân loại 2</label>
+          <input id="vg2" className="vgroup__name" value="Size" readOnly />
+          <div className="radio-row" role="radiogroup" aria-label="Loại size">
+            {SIZE_TYPES.map((t) => (
+              <label key={t.key} className="radio">
+                <input type="radio" name="sizeType" checked={sizeType === t.key} onChange={() => setSizeType(t.key)} />
+                <span>{t.label}</span>
+              </label>
             ))}
           </div>
-        )}
+          <p className="vgroup__sub">Tùy chọn <i className="req-dot" /></p>
+          {activePresets.length > 0 && (
+            <div className="tag-row" style={{ marginBottom: '0.75rem' }}>
+              {activePresets.map((s) => (
+                <button
+                  key={s} type="button" className="tag"
+                  aria-pressed={validSizes.some((v) => v.toLowerCase() === s.toLowerCase())}
+                  onClick={() => togglePresetSize(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+          <datalist id="size-suggest">{activePresets.map((s) => <option key={s} value={s} />)}</datalist>
+          <div className="opt-grid">
+            {sizeRows.map((r, i) => {
+              const empty = sizeEmpty(r);
+              return (
+                <div key={r.id} className="opt-row" onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn('size', i)}>
+                  <div className="opt-cell">
+                    <input
+                      className="opt-cell__main" list="size-suggest" maxLength={20}
+                      value={r.value} placeholder="Nhập hoặc chọn" aria-label={`Size ${i + 1}`}
+                      onChange={(e) => updateSizeRow(r.id, e.target.value)}
+                    />
+                  </div>
+                  {empty ? (
+                    <span className="opt-spacer" />
+                  ) : (
+                    <>
+                      <span
+                        className="opt-icon opt-icon--drag" draggable title="Kéo để đổi thứ tự"
+                        onDragStart={() => { dragRef.current = { list: 'size', index: i }; }}
+                      >
+                        <Move size={16} />
+                      </span>
+                      <button type="button" className="opt-icon" aria-label={`Xoá size ${r.value}`} onClick={() => removeSizeRow(r.id)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          <p className="vgroup__hint">
+            Bấm nút gợi ý (S, M, L…) để thêm/bỏ nhanh, hoặc tự gõ size vào ô trống. Loại size chỉ để gợi ý — sản phẩm lưu đúng những size bạn nhập.
+          </p>
+        </div>
       </section>
 
       {/* ---------- Ma tran gia / ton kho ---------- */}
@@ -676,21 +786,28 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
                         {si === 0 && (
                           <td className="variant-table__color" rowSpan={validSizes.length}>
                             <strong>{c.name}</strong>
-                            <button
-                              type="button"
-                              className={`variant-table__img${c.images.length === 0 ? ' variant-table__img--empty' : ''}`}
-                              onClick={() => pickColorImages(c.id)}
-                              disabled={uploadingColorId === c.id}
-                              aria-label={`Thêm ảnh cho màu ${c.name}`}
-                              title="Bấm để thêm ảnh cho màu này"
-                            >
-                              {uploadingColorId === c.id
-                                ? <span>Đang tải…</span>
-                                : c.images.length > 0
-                                  ? <img src={c.images[0].url} alt={c.name} />
+                            <div className="variant-table__imgs">
+                              {c.images.map((im) => (
+                                <div className="variant-table__thumb" key={im.url}>
+                                  <img src={im.url} alt={`${c.name} — ${im.name}`} />
+                                  <button type="button" onClick={() => removeColorImage(c.id, im.url)} aria-label={`Xoá ảnh ${im.name}`}>
+                                    <X size={10} />
+                                  </button>
+                                </div>
+                              ))}
+                              <button
+                                type="button"
+                                className="variant-table__img variant-table__img--empty"
+                                onClick={() => pickColorImages(c.id)}
+                                disabled={uploadingColorId === c.id}
+                                aria-label={`Thêm ảnh cho màu ${c.name}`}
+                                title="Bấm để thêm ảnh cho màu này"
+                              >
+                                {uploadingColorId === c.id
+                                  ? <span>Đang tải…</span>
                                   : <><Plus size={16} /><span>Thêm ảnh</span></>}
-                              {c.images.length > 1 && <em>{c.images.length}</em>}
-                            </button>
+                              </button>
+                            </div>
                           </td>
                         )}
                         <td className="center">{s}</td>
