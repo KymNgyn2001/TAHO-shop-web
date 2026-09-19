@@ -612,7 +612,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
               const hexOk = HEX_RE.test(c.hex.trim());
               const hexBad = c.hex.trim() !== '' && !hexOk;
               return (
-                <div key={c.id} className="opt-row" onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn('color', i)}>
+                <div key={c.id} className="vopt-row" onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn('color', i)}>
                   <div className="opt-cell">
                     <input
                       className="opt-cell__main" list="color-suggest"
@@ -691,7 +691,7 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
             {sizeRows.map((r, i) => {
               const empty = sizeEmpty(r);
               return (
-                <div key={r.id} className="opt-row" onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn('size', i)}>
+                <div key={r.id} className="vopt-row" onDragOver={(e) => e.preventDefault()} onDrop={() => dropOn('size', i)}>
                   <div className="opt-cell">
                     <input
                       className="opt-cell__main" list="size-suggest" maxLength={20}
