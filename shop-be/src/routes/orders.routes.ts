@@ -12,7 +12,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { STAFF_ROLES, isStaff } from '../lib/roles';
 import { sendOrderConfirmationEmail } from '../lib/mailer';
 import { createMomoPayment } from '../lib/momo';
-import { createPayOSPayment, payosEnabled } from '../lib/payos';
+import { cancelPayOSPayment, createPayOSPayment, payosEnabled } from '../lib/payos';
 
 export const ordersRouter = Router();
 
@@ -23,7 +23,11 @@ const createOrderSchema = z.object({
   shippingMethodId: z.number().int().positive(),
   discountCode: z.string().optional(),
   receiverName: z.string().min(1, 'Vui long nhap ten nguoi nhan.'),
-  receiverPhone: z.string().min(8, 'So dien thoai khong hop le.'),
+  // Chap nhan 0901234567, +84901234567, 090 123 4567, 090.123.4567 — chuan hoa ve 0xxxxxxxxx.
+  receiverPhone: z
+    .string()
+    .transform((s) => s.replace(/[\s.\-()]/g, '').replace(/^\+84/, '0'))
+    .refine((s) => /^0\d{9}$/.test(s), 'So dien thoai khong hop le.'),
   email: z.string().email('Email khong hop le.'),
   shippingAddress: z.string().min(1, 'Vui long nhap dia chi giao hang.'),
   note: z.string().optional(),
@@ -172,7 +176,7 @@ ordersRouter.post(
         // xong (con PENDING), chi bao loi de FE hien thong bao, khong lam mat don.
         return res.status(201).json({ ...toOrder(order), payUrl: null, payError: payment.message });
       } catch {
-        return res.status(201).json({ ...toOrder(order), payUrl: null, payError: 'Khong ket noi duoc toi MoMo.' });
+        return res.status(201).json({ ...toOrder(order), payUrl: null, payError: 'Không kết nối được tới MoMo, bạn thử lại sau ít phút hoặc chọn cách thanh toán khác.' });
       }
     }
 
@@ -196,7 +200,7 @@ ordersRouter.post(
         return res.status(201).json({
           ...toOrder(order),
           payUrl: null,
-          payError: e instanceof Error ? e.message : 'Khong ket noi duoc toi PayOS.',
+          payError: 'Không tạo được link thanh toán chuyển khoản, bạn thử lại hoặc chọn cách thanh toán khác.',
         });
       }
     }
@@ -307,6 +311,11 @@ ordersRouter.post(
         include: orderInclude,
       });
     });
+
+    // Don huy thi huy luon link chuyen khoan, tranh khach lo chuyen tien vao don da huy.
+    if (updated.paymentMethod === 'BANK_TRANSFER' && payosEnabled) {
+      void cancelPayOSPayment(updated.id, body.reason);
+    }
 
     res.json(toOrder(updated));
   }),

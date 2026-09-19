@@ -385,3 +385,7 @@ button { font: inherit; cursor: pointer; }
   padding: 0.75rem 1rem; margin: 1rem 0;
   font-size: var(--step--1);
 }
+
+/* Loi ngay duoi o nhap — hien sau khi roi khoi o (onBlur), khong bao loi khi nguoi dung dang go. */
+.field-error { display: block; margin-top: 0.3rem; font-size: var(--step--1); color: var(--accent); }
+

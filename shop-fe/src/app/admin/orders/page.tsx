@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { adminApi } from '@/lib/admin-api';
-import { api, ApiException } from '@/lib/api-client';
+import { api, ApiException, errorMessage } from '@/lib/api-client';
 import type { Order, OrderStatus } from '@/lib/api-contract';
 import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 
@@ -53,6 +53,7 @@ export default function AdminOrdersPage() {
       setLoading(true);
       adminApi.listAllOrders(0, 100, status || undefined)
         .then((p) => setOrders(p.items))
+        .catch((e) => setRowError(errorMessage(e, 'Không tải được danh sách đơn hàng.')))
         .finally(() => setLoading(false));
     }
     load();

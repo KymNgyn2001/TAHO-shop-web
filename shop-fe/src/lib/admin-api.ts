@@ -3,7 +3,7 @@
 // Cung quy uoc voi src/lib/api-client.ts: NEXT_PUBLIC_USE_MOCK=true -> du lieu gia.
 // =====================================================================
 
-import { ApiException, getToken, sessionId, BASE_URL } from './api-client';
+import { ApiException, getToken, sessionId, BASE_URL, request, fetchWithTimeout, failureFromResponse } from './api-client';
 import type {
   UploadedImage,
   CategoryWithCount,
@@ -34,32 +34,6 @@ type ProductDetail = ProductCard & {
 };
 
 const USE_MOCK = process.env.NEXT_PUBLIC_USE_MOCK !== 'false';
-
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Session-Id': sessionId(),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...init.headers,
-    },
-  });
-
-  if (!res.ok) {
-    let code = 'UNKNOWN';
-    let message = 'Không kết nối được máy chủ. Thử lại sau ít phút.';
-    try {
-      const body = await res.json();
-      code = body.code ?? code;
-      message = body.message ?? message;
-    } catch { /* body rong */ }
-    throw new ApiException(code, message, res.status);
-  }
-
-  return res.status === 204 ? (undefined as T) : res.json();
-}
 
 const delay = (ms = 350) => new Promise((r) => setTimeout(r, ms));
 
@@ -135,17 +109,11 @@ export const adminApi = {
       const fd = new FormData();
       fd.append('file', file);
       const token = getToken();
-      const res = await fetch(`${BASE_URL}/api/admin/uploads`, {
+      const res = await fetchWithTimeout(`${BASE_URL}/api/admin/uploads`, {
         method: 'POST', body: fd,
         headers: { 'X-Session-Id': sessionId(), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       });
-      if (!res.ok) {
-        throw new ApiException(
-          res.status === 413 ? 'FILE_TOO_LARGE' : 'UNSUPPORTED_TYPE',
-          res.status === 413 ? 'Ảnh vượt quá 10MB.' : 'Định dạng ảnh không được hỗ trợ.',
-          res.status,
-        );
-      }
+      if (!res.ok) throw await failureFromResponse(res, !!token);
       return res.json();
     }
     await delay(500);

@@ -33,6 +33,8 @@ export default function OrderDetailPage() {
   const { code } = useParams<{ code: string }>();
   const [order, setOrder] = useState<Order | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [stoppedPayment, setStoppedPayment] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [reason, setReason] = useState('');
@@ -43,9 +45,11 @@ export default function OrderDetailPage() {
     if (!ready) return;
     function load() {
       api.getOrder(code).then(setOrder).catch((e) =>
-        setError(e instanceof ApiException ? e.message : 'Không tìm thấy đơn hàng.'));
+        setLoadError(e instanceof ApiException ? e.message : 'Không tìm thấy đơn hàng.'));
     }
     load();
+    // PayOS dua khach ve day kem ?cancel=true neu ho bam Huy tren trang thanh toan.
+    setStoppedPayment(new URLSearchParams(window.location.search).get('cancel') === 'true');
   }, [ready, code]);
 
   if (!ready) return null;
@@ -80,7 +84,7 @@ export default function OrderDetailPage() {
     }
   }
 
-  if (error) return <div className="wrap"><p className="error-bar">{error}</p></div>;
+  if (loadError) return <div className="wrap"><p className="error-bar">{loadError}</p></div>;
   if (!order) return <div className="wrap order-detail"><div className="skeleton" style={{ height: 240 }} /></div>;
 
   return (
@@ -97,11 +101,40 @@ export default function OrderDetailPage() {
 
       {error && <p className="error-bar">{error}</p>}
 
-      {order.paymentMethod === 'BANK_TRANSFER' && order.status === 'PENDING' && (
+      {stoppedPayment && order.status === 'PENDING' && (
+        <div className="error-bar">
+          Bạn đã dừng thanh toán trên trang chuyển khoản, nên link thanh toán có thể đã đóng. Muốn tiếp tục,
+          bạn huỷ đơn này ở cuối trang rồi đặt lại; hoặc liên hệ shop (0939 299 099) để được hỗ trợ.
+        </div>
+      )}
+
+      {order.paymentMethod !== 'COD' && (order.paidAmount ?? 0) > 0 && order.status === 'PENDING' && (
+        <div className="error-bar" style={{ borderLeftColor: 'var(--accent)' }}>
+          <strong>Đơn chưa đủ tiền.</strong> Shop đã nhận {vnd(order.paidAmount ?? 0)} trên tổng {vnd(order.totalAmount)} —
+          còn thiếu <strong>{vnd(order.totalAmount - (order.paidAmount ?? 0))}</strong>. Bạn chuyển nốt đúng số còn thiếu
+          (giữ nguyên nội dung <strong>{order.code}</strong>){order.payUrl && <> qua <a href={order.payUrl} target="_blank" rel="noreferrer" style={{ textDecoration: 'underline' }}>trang thanh toán</a></>} để đơn được xác nhận.
+        </div>
+      )}
+
+      {order.paymentMethod !== 'COD' && (order.paidAmount ?? 0) > order.totalAmount && order.status !== 'CANCELLED' && (
+        <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+          Shop nhận được {vnd(order.paidAmount ?? 0)}, nhiều hơn giá trị đơn {vnd(order.totalAmount)} là <strong>{vnd((order.paidAmount ?? 0) - order.totalAmount)}</strong>.
+          {isStaff ? ' Cần liên hệ khách để hoàn lại phần dư.' : ' Shop sẽ liên hệ để hoàn lại phần dư cho bạn.'}
+        </div>
+      )}
+
+      {order.status === 'CANCELLED' && (order.paidAmount ?? 0) > 0 && (
+        <div className="error-bar" style={{ borderLeftColor: 'var(--accent)' }}>
+          Đơn đã huỷ nhưng đã nhận <strong>{vnd(order.paidAmount ?? 0)}</strong> từ khách.
+          {isStaff ? ' Cần hoàn tiền lại cho khách.' : ' Shop sẽ hoàn lại số tiền này cho bạn.'}
+        </div>
+      )}
+
+      {order.paymentMethod === 'BANK_TRANSFER' && order.status === 'PENDING' && (order.paidAmount ?? 0) === 0 && (
         <div className="bank-qr">
           <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
-            Vui lòng chuyển khoản số tiền <strong>{vnd(order.totalAmount)}</strong> và ghi nội dung
-            <strong> {order.code}</strong> để đơn được xác nhận nhanh hơn.
+            Vui lòng chuyển khoản <strong>đúng số tiền {vnd(order.totalAmount)}</strong> và ghi đúng nội dung
+            <strong> {order.code}</strong> (không sửa) để đơn được xác nhận tự động. Chuyển thiếu thì đơn chưa được xác nhận.
           </div>
           <img
             src={order.payQrData ? payosQrImageUrl(order.payQrData) : vietQrImageUrl(order.totalAmount, order.code)}

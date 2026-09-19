@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { adminApi } from '@/lib/admin-api';
-import { ApiException } from '@/lib/api-client';
+import { ApiException, errorMessage } from '@/lib/api-client';
 import type { CategoryWithCount } from '@/lib/api-contract-admin';
 import type { CategoryGroup } from '@/lib/api-contract';
 import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
@@ -20,7 +20,7 @@ export default function AdminCategoriesPage() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (ready) adminApi.listCategories().then(setCategories).catch(() => {});
+    if (ready) adminApi.listCategories().then(setCategories).catch((e) => setError(errorMessage(e, 'Không tải được danh mục.')));
   }, [ready]);
 
   async function add() {

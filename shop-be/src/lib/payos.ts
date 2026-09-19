@@ -47,12 +47,38 @@ export async function createPayOSPayment(params: {
   return { checkoutUrl: link.checkoutUrl, qrCode: link.qrCode };
 }
 
-export async function verifyPayOSWebhook(body: unknown): Promise<{ orderCode: number; code: string } | null> {
+export async function verifyPayOSWebhook(
+  body: unknown,
+): Promise<{ orderCode: number; code: string; amount: number } | null> {
   if (!payos) return null;
   try {
     const data = await payos.webhooks.verify(body as Parameters<typeof payos.webhooks.verify>[0]);
-    return { orderCode: data.orderCode, code: data.code };
+    return { orderCode: data.orderCode, code: data.code, amount: data.amount };
   } catch {
     return null;
+  }
+}
+
+/**
+ * Hoi PayOS tong so tien da nhan cua 1 link thanh toan — webhook chi bao 1 giao dich,
+ * ma khach co the chuyen nhieu lan (thieu roi bu them), nen PayOS moi la nguon dung.
+ */
+export async function getPayOSPaymentInfo(orderCode: number): Promise<{ status: string; amountPaid: number } | null> {
+  if (!payos) return null;
+  try {
+    const link = await payos.paymentRequests.get(orderCode);
+    return { status: link.status, amountPaid: link.amountPaid };
+  } catch {
+    return null;
+  }
+}
+
+/** Huy link khi don bi huy — khach khong the chuyen tien vao don da huy nua. Best-effort. */
+export async function cancelPayOSPayment(orderCode: number, reason: string): Promise<void> {
+  if (!payos) return;
+  try {
+    await payos.paymentRequests.cancel(orderCode, reason);
+  } catch {
+    // Link da het han/da huy/da thanh toan — khong sao.
   }
 }

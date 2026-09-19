@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { api } from '@/lib/api-client';
+import { api, errorMessage } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
 import { useRequireRole, ALL_ROLES } from '@/lib/require-role';
 
@@ -20,11 +20,14 @@ const STATUS_VI: Record<string, string> = {
 export default function OrdersPage() {
   const { ready } = useRequireRole(ALL_ROLES);
   const [orders, setOrders] = useState<Order[] | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
     function load() {
-      api.listOrders().then((p) => setOrders(p.items)).catch(() => setOrders([]));
+      api.listOrders()
+        .then((p) => setOrders(p.items))
+        .catch((e) => { setLoadError(errorMessage(e, 'Không tải được đơn hàng của bạn.')); setOrders([]); });
     }
     load();
   }, [ready]);
@@ -38,8 +41,9 @@ export default function OrdersPage() {
   return (
     <div className="wrap orders-page">
       <h1>Đơn hàng của tôi</h1>
+      {loadError && <p className="error-bar">{loadError} Bạn tải lại trang để thử lại nhé.</p>}
 
-      {orders.length === 0 ? (
+      {orders.length === 0 && loadError ? null : orders.length === 0 ? (
         <div className="empty">
           <p>Bạn chưa có đơn hàng nào.</p>
           <Link href="/" className="chip">Bắt đầu mua sắm</Link>

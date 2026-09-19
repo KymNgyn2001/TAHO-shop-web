@@ -2,7 +2,8 @@ import { Router } from 'express';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { verifyMomoIpnSignature } from '../lib/momo';
-import { verifyPayOSWebhook } from '../lib/payos';
+import { getPayOSPaymentInfo, verifyPayOSWebhook } from '../lib/payos';
+import { recordPayment } from '../lib/payments';
 
 export const paymentsRouter = Router();
 
@@ -23,10 +24,12 @@ paymentsRouter.post(
 
     const orderCode = String(body.orderId ?? '');
     const resultCode = Number(body.resultCode);
+    const amount = Number(body.amount);
     const order = await prisma.order.findUnique({ where: { code: orderCode } });
 
-    if (order && order.paymentMethod === 'MOMO' && order.status === 'PENDING' && resultCode === 0) {
-      await prisma.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
+    if (order && order.paymentMethod === 'MOMO' && resultCode === 0 && Number.isFinite(amount)) {
+      // recordPayment chi xac nhan khi so tien >= tong don, khong tin resultCode mot minh.
+      await recordPayment(order, amount);
     }
 
     res.status(200).json({ resultCode: 0, message: 'Confirm Success' });
@@ -44,8 +47,12 @@ paymentsRouter.post(
     const data = await verifyPayOSWebhook(req.body);
     if (data && data.code === '00') {
       const order = await prisma.order.findUnique({ where: { id: data.orderCode } });
-      if (order && order.paymentMethod === 'BANK_TRANSFER' && order.status === 'PENDING') {
-        await prisma.order.update({ where: { id: order.id }, data: { status: 'CONFIRMED' } });
+      if (order && order.paymentMethod === 'BANK_TRANSFER') {
+        // Hoi lai PayOS tong da nhan (khach co the chuyen nhieu lan); neu PayOS khong tra
+        // loi thi chi tin giao dich vua bao — khong bao gio cong don de tranh xac nhan nham.
+        const info = await getPayOSPaymentInfo(data.orderCode);
+        const paidTotal = Math.max(info?.amountPaid ?? 0, data.amount, order.paidAmount ?? 0);
+        await recordPayment(order, paidTotal);
       }
     }
     // PayOS cung goi mot request thu (khong khop don nao that) luc dang ky webhook —

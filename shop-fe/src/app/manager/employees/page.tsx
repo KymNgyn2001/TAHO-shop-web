@@ -4,7 +4,7 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { adminApi } from '@/lib/admin-api';
-import { ApiException } from '@/lib/api-client';
+import { ApiException, errorMessage } from '@/lib/api-client';
 import type { Employee } from '@/lib/api-contract-admin';
 import { useRequireRole, MANAGER_ROLES } from '@/lib/require-role';
 import { roleLabel } from '@/lib/auth-context';
@@ -25,7 +25,7 @@ export default function ManagerEmployeesPage() {
   const [newTempPassword, setNewTempPassword] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
-    if (ready) adminApi.listEmployees(showDeleted).then(setEmployees).catch(() => {});
+    if (ready) adminApi.listEmployees(showDeleted).then(setEmployees).catch((e) => setError(errorMessage(e, 'Không tải được danh sách tài khoản.')));
   }, [ready, showDeleted]);
 
   async function create() {

@@ -120,6 +120,7 @@ export function toOrder(
     email: o.email,
     payUrl: o.payUrl,
     payQrData: o.payQrData,
+    paidAmount: o.paidAmount,
     shippingAddress: o.shippingAddress,
     note: o.note,
     createdBy: o.createdBy,

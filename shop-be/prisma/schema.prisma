@@ -203,6 +203,9 @@ model Order {
   /** Chuoi QR VietQR goc PayOS tra ve (bank-transfer) — FE tu ve lai anh QR tu day,
    * khong con dung QR tinh gan cung nua. Null neu khong dung PayOS. */
   payQrData        String?
+  /** Tong so tien da nhan duoc that tu cong thanh toan (PayOS/MoMo) — so voi totalAmount de
+   * biet khach chuyen thieu/du. Null = chua nhan gi (hoac COD). */
+  paidAmount       Int?
   shippingAddress  String
   note             String?
   createdBy        CreatedBy       @default(WEB)

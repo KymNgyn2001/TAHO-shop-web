@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Eye, EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
-import { api, ApiException } from '@/lib/api-client';
+import { api, ApiException, errorMessage } from '@/lib/api-client';
 import type { ProductCard } from '@/lib/api-contract';
 import { adminApi } from '@/lib/admin-api';
 import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
@@ -28,7 +28,10 @@ export default function AdminProductsPage() {
     if (!ready) return;
     function load() {
       setLoading(true);
-      api.listProducts(0, 100, { includeInactive: true }).then((p) => setProducts(p.items)).finally(() => setLoading(false));
+      api.listProducts(0, 100, { includeInactive: true })
+        .then((p) => setProducts(p.items))
+        .catch((e) => setError(errorMessage(e, 'Không tải được danh sách sản phẩm.')))
+        .finally(() => setLoading(false));
     }
     load();
   }, [ready]);

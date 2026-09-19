@@ -4,13 +4,17 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { api, ApiException } from '@/lib/api-client';
+import { api, ApiException, errorMessage } from '@/lib/api-client';
 import type { Cart, Order, ShippingMethod } from '@/lib/api-contract';
 import { useAuth, isStaffRole } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { vietQrImageUrl, bankInfo } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
+
+const PHONE_RE = /^(0|\+84)\d{9}$/;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const cleanPhone = (s: string) => s.replace(/[\s.\-()]/g, '');
 
 type PaymentMethod = 'COD' | 'BANK_TRANSFER' | 'MOMO';
 
@@ -44,11 +48,13 @@ export default function CheckoutPage() {
   const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
 
   useEffect(() => {
-    Promise.all([api.getCart(), api.shippingMethods()]).then(([c, m]) => {
-      setCart(c);
-      setMethods(m);
-      setShippingMethodId(m[0]?.id ?? null);
-    });
+    Promise.all([api.getCart(), api.shippingMethods()])
+      .then(([c, m]) => {
+        setCart(c);
+        setMethods(m);
+        setShippingMethodId(m[0]?.id ?? null);
+      })
+      .catch((e) => setError(errorMessage(e, 'Không tải được giỏ hàng, bạn tải lại trang nhé.')));
   }, []);
 
   useEffect(() => {
@@ -90,7 +96,20 @@ export default function CheckoutPage() {
     }
   }
 
-  const ready = !!cart?.items.length && !!shippingMethodId && receiverName.trim() && receiverPhone.trim() && email.trim() && shippingAddress.trim();
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const touch = (k: string) => setTouched((t) => ({ ...t, [k]: true }));
+
+  const nameOk = receiverName.trim().length >= 2;
+  const phoneOk = PHONE_RE.test(cleanPhone(receiverPhone));
+  const emailOk = EMAIL_RE.test(email.trim());
+  const addressOk = shippingAddress.trim().length >= 10;
+  const missing = [
+    !nameOk && 'tên người nhận',
+    !phoneOk && 'số điện thoại hợp lệ',
+    !emailOk && 'email hợp lệ',
+    !addressOk && 'địa chỉ đầy đủ',
+  ].filter(Boolean) as string[];
+  const ready = !!cart?.items.length && !!shippingMethodId && missing.length === 0;
 
   async function placeOrder() {
     if (!ready || !shippingMethodId) return;
@@ -172,7 +191,13 @@ export default function CheckoutPage() {
 
   if (isStaffRole(user?.role)) return null;
 
-  if (!cart) return <div className="wrap checkout"><div className="skeleton" style={{ height: 300 }} /></div>;
+  if (!cart) {
+    return (
+      <div className="wrap checkout">
+        {error ? <p className="error-bar">{error}</p> : <div className="skeleton" style={{ height: 300 }} />}
+      </div>
+    );
+  }
 
   if (cart.items.length === 0) {
     return (
@@ -191,21 +216,33 @@ export default function CheckoutPage() {
         <div>
           <section className="panel" style={{ marginBottom: '1.25rem' }}>
             <h2>Thông tin nhận hàng</h2>
+            <div className="error-bar" style={{ borderLeftColor: 'var(--ink)', marginTop: 0 }}>
+              <strong>Điền đúng để đơn giao thành công:</strong>
+              <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem' }}>
+                <li>Số điện thoại 10 chữ số (VD 0901234567) — shipper sẽ gọi số này trước khi giao.</li>
+                <li>Email đúng để nhận xác nhận đơn hàng và thông báo thanh toán.</li>
+                <li>Địa chỉ ghi đủ: số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố.</li>
+              </ul>
+            </div>
             <div className="field">
               <label htmlFor="rn">Tên người nhận</label>
-              <input id="rn" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} />
+              <input id="rn" value={receiverName} onBlur={() => touch('name')} onChange={(e) => setReceiverName(e.target.value)} />
+              {touched.name && !nameOk && <small className="field-error">Bạn nhập tên người nhận nhé.</small>}
             </div>
             <div className="field">
               <label htmlFor="rp">Số điện thoại</label>
-              <input id="rp" value={receiverPhone} onChange={(e) => setReceiverPhone(e.target.value)} />
+              <input id="rp" inputMode="tel" placeholder="0901234567" value={receiverPhone} onBlur={() => touch('phone')} onChange={(e) => setReceiverPhone(e.target.value)} />
+              {touched.phone && !phoneOk && <small className="field-error">Số điện thoại cần đúng 10 chữ số, bắt đầu bằng 0.</small>}
             </div>
             <div className="field">
               <label htmlFor="email">Email nhận thông báo đơn hàng</label>
-              <input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+              <input id="email" type="email" placeholder="ten@gmail.com" value={email} onBlur={() => touch('email')} onChange={(e) => setEmail(e.target.value)} />
+              {touched.email && !emailOk && <small className="field-error">Email chưa đúng định dạng (VD ten@gmail.com).</small>}
             </div>
             <div className="field">
               <label htmlFor="addr">Địa chỉ giao hàng</label>
-              <textarea id="addr" rows={2} value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} />
+              <textarea id="addr" rows={2} placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố" value={shippingAddress} onBlur={() => touch('addr')} onChange={(e) => setShippingAddress(e.target.value)} />
+              {touched.addr && !addressOk && <small className="field-error">Địa chỉ cần ghi đầy đủ hơn (ít nhất 10 ký tự) để shipper tìm được.</small>}
             </div>
             <div className="field">
               <label htmlFor="note">Ghi chú (không bắt buộc)</label>
@@ -286,16 +323,24 @@ export default function CheckoutPage() {
                 <span className="option-card__title">Ví MoMo</span>
               </div>
             </div>
-            {payment === 'BANK_TRANSFER' && (
-              <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '0.75rem' }}>
-                Sau khi đặt hàng, thông tin chuyển khoản sẽ hiện ở trang chi tiết đơn hàng.
-              </p>
-            )}
-            {payment === 'MOMO' && (
-              <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', marginTop: '0.75rem' }}>
-                Sau khi bấm "Đặt hàng", bạn sẽ được chuyển sang trang thanh toán MoMo (môi trường thử nghiệm).
-              </p>
-            )}
+            <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+              {payment === 'COD' && (
+                <>Bạn thanh toán tiền mặt cho shipper khi nhận hàng — nhớ nghe máy khi shipper gọi.</>
+              )}
+              {payment === 'BANK_TRANSFER' && (
+                <>
+                  Sau khi bấm "Đặt hàng", bạn được chuyển sang trang quét mã QR. Hãy chuyển <strong>đúng số tiền {vnd(total)}</strong> và
+                  giữ nguyên <strong>nội dung chuyển khoản</strong> (không sửa) để đơn tự động được xác nhận.
+                  Chuyển thiếu thì đơn chưa được xác nhận — bạn chuyển nốt phần còn lại là được; chuyển dư thì shop sẽ liên hệ hoàn lại.
+                </>
+              )}
+              {payment === 'MOMO' && (
+                <>
+                  Sau khi bấm "Đặt hàng", bạn được chuyển sang trang thanh toán MoMo (môi trường thử nghiệm) —
+                  thanh toán đúng <strong>{vnd(total)}</strong> để đơn tự động được xác nhận.
+                </>
+              )}
+            </div>
           </section>
         </div>
 
@@ -328,6 +373,11 @@ export default function CheckoutPage() {
           <button type="button" className="btn-primary" disabled={!ready || placing} onClick={placeOrder}>
             {placing ? 'Đang đặt hàng…' : 'Đặt hàng'}
           </button>
+          {missing.length > 0 && (
+            <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', margin: '0.6rem 0 0' }}>
+              Còn thiếu: {missing.join(', ')}.
+            </p>
+          )}
         </aside>
       </div>
     </div>

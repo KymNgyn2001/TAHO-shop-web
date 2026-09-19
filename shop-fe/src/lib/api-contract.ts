@@ -145,6 +145,8 @@ export interface Order {
   payUrl?: string | null;
   /** Chuoi QR VietQR goc tu PayOS — FE tu ve anh QR tu day (xem payosQrImageUrl). */
   payQrData?: string | null;
+  /** Tong tien da nhan that tu cong thanh toan — so voi totalAmount de biet khach chuyen thieu/du. */
+  paidAmount?: number | null;
   /** Chi co ngay sau khi tao don MOMO/PayOS neu bi tu choi tao thanh toan. */
   payError?: string | null;
 }

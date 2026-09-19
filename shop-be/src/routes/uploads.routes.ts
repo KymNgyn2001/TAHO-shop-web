@@ -32,7 +32,9 @@ uploadsRouter.post(
         : saveLocalUpload(req.file);
       res.json({ url, fileName: req.file.originalname, sizeBytes: req.file.size });
     } catch (err) {
-      next(err);
+      // R2 hong/timeout — bao de thu lai thay vi 'loi he thong' chung chung.
+      console.error('[upload] Luu anh that bai:', err);
+      next(new ApiError(502, 'UPLOAD_FAILED', 'Không lưu được ảnh, bạn thử lại sau ít giây nhé.'));
     }
   },
 );

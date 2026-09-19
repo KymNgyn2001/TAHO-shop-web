@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/admin-api';
-import { ApiException } from '@/lib/api-client';
+import { ApiException, errorMessage } from '@/lib/api-client';
 import type { ReviewForAdmin } from '@/lib/api-contract-admin';
 import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 
@@ -58,13 +58,18 @@ export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<ReviewForAdmin[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'replied'>('pending');
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!ready) return;
     function load() {
       setLoading(true);
+      setLoadError(null);
       const replied = filter === 'all' ? undefined : filter === 'replied';
-      adminApi.listReviews(replied).then((p) => setReviews(p.items)).finally(() => setLoading(false));
+      adminApi.listReviews(replied)
+        .then((p) => setReviews(p.items))
+        .catch((e) => setLoadError(errorMessage(e, 'Không tải được đánh giá.')))
+        .finally(() => setLoading(false));
     }
     load();
   }, [ready, filter]);
@@ -80,6 +85,8 @@ export default function AdminReviewsPage() {
         <button type="button" aria-pressed={filter === 'replied'} onClick={() => setFilter('replied')}>Đã trả lời</button>
         <button type="button" aria-pressed={filter === 'all'} onClick={() => setFilter('all')}>Tất cả</button>
       </div>
+
+      {loadError && <p className="error-bar">{loadError}</p>}
 
       {loading ? (
         <div className="skeleton" style={{ height: 160 }} />

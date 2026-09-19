@@ -141,3 +141,36 @@ export async function sendPasswordResetEmail(to: string, resetUrl: string): Prom
     return false;
   }
 }
+
+
+/** Bao khach da nhan duoc mot phan tien nhung con thieu — tranh khach tuong da xong. */
+export async function sendPaymentShortfallEmail(
+  to: string,
+  info: { code: string; paid: number; total: number; payUrl: string | null },
+): Promise<void> {
+  if (!transporter) return;
+  const missing = info.total - info.paid;
+  try {
+    await transporter.sendMail({
+      from: `"TAHO" <${env.emailUser}>`,
+      to,
+      subject: `Đơn ${info.code} còn thiếu ${vnd(missing)} — TAHO`,
+      html: `
+        <div style="font-family:Arial,Helvetica,sans-serif;max-width:480px;margin:0 auto;color:#22201C;">
+          <div style="background:#22201C;color:#fff;padding:20px;text-align:center;">
+            <span style="font-size:22px;font-weight:bold;letter-spacing:1px;">TAHO</span>
+          </div>
+          <div style="padding:24px 20px;font-size:14px;line-height:1.6;">
+            <h2 style="margin:0 0 12px;font-weight:500;">Đơn ${info.code} chưa đủ tiền</h2>
+            <p>Mình đã nhận <strong>${vnd(info.paid)}</strong> trên tổng <strong>${vnd(info.total)}</strong>.
+            Bạn vui lòng chuyển nốt <strong>${vnd(missing)}</strong> (ghi đúng nội dung <strong>${info.code}</strong>) để đơn được xác nhận.</p>
+            ${info.payUrl ? `<p style="text-align:center;margin:24px 0;"><a href="${info.payUrl}" style="background:#22201C;color:#fff;text-decoration:none;padding:12px 28px;border-radius:4px;display:inline-block;">Chuyển nốt số còn thiếu</a></p>` : ''}
+            <p style="color:#888;font-size:12px;">Nếu bạn đã chuyển đủ mà vẫn nhận mail này, hãy liên hệ shop: 0939 299 099.</p>
+          </div>
+        </div>`,
+    });
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.error('[mailer] Gui email thieu tien that bai:', e);
+  }
+}

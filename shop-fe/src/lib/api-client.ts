@@ -124,6 +124,7 @@ type Order = {
   cancellable: boolean;
   payUrl?: string | null;
   payQrData?: string | null;
+  paidAmount?: number | null;
   payError?: string | null;
 };
 
@@ -289,9 +290,70 @@ function clearSession() {
   localStorage.removeItem(USER_KEY);
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** Render goi mien phi "ngu" khi khong co ai truy cap — request dau tien co the mat 30-60s. */
+const REQUEST_TIMEOUT_MS = 60_000;
+
+const STATUS_MESSAGES: Record<number, string> = {
+  400: 'Thông tin gửi lên chưa đúng, bạn kiểm tra lại nhé.',
+  401: 'Phiên đăng nhập đã hết hạn, bạn đăng nhập lại nhé.',
+  403: 'Bạn không có quyền thực hiện thao tác này.',
+  404: 'Không tìm thấy dữ liệu bạn cần.',
+  409: 'Thao tác này đang bị trùng hoặc xung đột với dữ liệu hiện có.',
+  413: 'Dữ liệu gửi lên quá lớn.',
+  429: 'Bạn thao tác quá nhanh, đợi một chút rồi thử lại nhé.',
+};
+
+/** Loi mang / timeout / phien het han duoc doi thanh ApiException co thong bao tieng Viet de UI hien thang. */
+export function describeFailure(status: number): string {
+  if (STATUS_MESSAGES[status]) return STATUS_MESSAGES[status];
+  if (status >= 500) return 'Máy chủ đang gặp sự cố, bạn thử lại sau ít phút nhé.';
+  return 'Có lỗi xảy ra, bạn thử lại sau nhé.';
+}
+
+export async function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (e) {
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      throw new ApiException(
+        'TIMEOUT',
+        'Máy chủ phản hồi quá chậm (có thể đang khởi động lại). Bạn đợi ít giây rồi thử lại nhé.',
+        0,
+      );
+    }
+    throw new ApiException('NETWORK', 'Không kết nối được máy chủ. Bạn kiểm tra mạng rồi thử lại nhé.', 0);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Doc loi tu response: uu tien message server (da co dau), khong co thi dung cau theo ma HTTP. */
+export async function failureFromResponse(res: Response, hadToken: boolean): Promise<ApiException> {
+  let code = 'UNKNOWN';
+  let message = describeFailure(res.status);
+  try {
+    const body = await res.json();
+    code = body.code ?? code;
+    if (typeof body.message === 'string' && body.message) message = body.message;
+  } catch { /* body rong / khong phai JSON (VD trang loi cua proxy) */ }
+  // Token het han/khong hop le khi dang dang nhap -> xoa phien de UI ve trang thai "chua dang nhap".
+  if (res.status === 401 && hadToken && code !== 'INVALID_CREDENTIALS') {
+    clearSession();
+    message = STATUS_MESSAGES[401];
+  }
+  return new ApiException(code, message, res.status);
+}
+
+/** Lay thong bao hien cho nguoi dung tu 1 loi bat duoc (ApiException co san tieng Viet). */
+export function errorMessage(e: unknown, fallback: string): string {
+  return e instanceof ApiException ? e.message : fallback;
+}
+
+export async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetchWithTimeout(`${BASE_URL}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
@@ -301,20 +363,15 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     },
   });
 
-  if (!res.ok) {
-    let code = 'UNKNOWN';
-    let message = 'Không kết nối được máy chủ. Thử lại sau ít phút.';
-    try {
-      const body = await res.json();
-      code = body.code ?? code;
-      message = body.message ?? message;
-    } catch { /* body rong */ }
-    throw new ApiException(code, message, res.status);
+  if (!res.ok) throw await failureFromResponse(res, !!token);
+
+  if (res.status === 204) return undefined as T;
+  try {
+    return await res.json();
+  } catch {
+    throw new ApiException('BAD_RESPONSE', 'Máy chủ trả về dữ liệu không đọc được, bạn thử lại nhé.', res.status);
   }
-
-  return res.status === 204 ? (undefined as T) : res.json();
 }
-
 const delay = (ms = 350) => new Promise((r) => setTimeout(r, ms));
 
 // ---------------------------------------------------------------------

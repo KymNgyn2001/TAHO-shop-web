@@ -260,13 +260,16 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   const extraSizes = sizes.filter((s) => !PRESET_SIZES.includes(s));
   const hasAnyImage = images.length > 0 || validColors.some((c) => c.images.length > 0);
 
-  const ready =
-    name.trim() !== '' &&
-    categoryId !== null &&
-    Number(basePrice) > 0 &&
-    hasAnyImage &&
-    validColors.length > 0 &&
-    validSizes.length > 0;
+  // Liet ke cu the con thieu gi de nhan vien khong phai doan vi sao nut Luu bi khoa.
+  const missing = [
+    name.trim() === '' && 'tên sản phẩm',
+    categoryId === null && 'loại quần áo',
+    !(Number(basePrice) > 0) && 'giá gốc lớn hơn 0',
+    !hasAnyImage && 'ít nhất 1 ảnh',
+    validColors.length === 0 && 'ít nhất 1 màu (có tên)',
+    validSizes.length === 0 && 'ít nhất 1 size',
+  ].filter(Boolean) as string[];
+  const ready = missing.length === 0;
 
   async function save() {
     if (!ready) return;
@@ -337,6 +340,15 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
         </p>
       )}
       {error && <p className="error-bar">{error}</p>}
+
+      <div className="error-bar" style={{ borderLeftColor: 'var(--ink)' }}>
+        <strong>Điền đúng để sản phẩm hiển thị đẹp:</strong>
+        <ul style={{ margin: '0.4rem 0 0', paddingLeft: '1.1rem' }}>
+          <li>Ảnh JPG/PNG/WEBP, mỗi ảnh tối đa {MAX_MB}MB; ảnh đầu tiên là ảnh bìa hiện ở trang chủ.</li>
+          <li>Giá ghi bằng số, không có dấu chấm (VD 250000). Ô "Giá riêng" để trống nghĩa là dùng giá gốc.</li>
+          <li>Mỗi màu ghi 1 tên rõ ràng (VD Đen, Trắng) và chọn ít nhất 1 size; nhập số tồn kho cho từng ô bên dưới.</li>
+        </ul>
+      </div>
 
       {/* ---------- Ảnh chung ---------- */}
       <section className="panel">
@@ -639,10 +651,13 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       <button type="button" className="btn-primary" disabled={!ready || saving} onClick={save}>
         {saving
           ? 'Đang lưu…'
-          : !ready
-            ? 'Điền đủ tên, giá, loại, ảnh, ít nhất 1 màu và 1 size'
-            : mode === 'edit' ? 'Lưu thay đổi' : 'Lưu sản phẩm'}
+          : mode === 'edit' ? 'Lưu thay đổi' : 'Lưu sản phẩm'}
       </button>
+      {!ready && (
+        <p style={{ fontSize: 'var(--step--1)', color: 'var(--muted)', margin: '0.6rem 0 0' }}>
+          Còn thiếu: {missing.join(', ')}.
+        </p>
+      )}
     </div>
   );
 }
