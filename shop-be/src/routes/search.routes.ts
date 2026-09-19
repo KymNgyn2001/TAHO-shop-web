@@ -17,7 +17,7 @@ searchRouter.post(
   asyncHandler(async (req, res) => {
     const body = semanticSchema.parse(req.body);
     const limit = body.limit ?? 12;
-    const products = await prisma.product.findMany({ include: productInclude });
+    const products = await prisma.product.findMany({ where: { active: true }, include: productInclude });
     const ranked = products
       .map((p) => ({
         product: p,
@@ -38,6 +38,7 @@ searchRouter.post(
     const limit = Math.min(50, Number(req.query.limit ?? 12));
     // Chua co model nhan dien anh -> tra ve san pham duoc xem nhieu nhat lam goi y tam thoi.
     const products = await prisma.product.findMany({
+      where: { active: true },
       include: productInclude,
       orderBy: { viewCount: 'desc' },
       take: limit,

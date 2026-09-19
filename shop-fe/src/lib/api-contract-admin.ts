@@ -132,8 +132,10 @@ export interface Employee {
   name: string;
   email: string;
   phone: string | null;
-  role: Role;           // luon la 'EMPLOYEE'
+  role: Role;           // 'EMPLOYEE' hoac 'MANAGER' (chi admin thay/tao manager)
   active: boolean;
+  /** Xoa mem — true = da xoa (an khoi danh sach, khoi phuc duoc). */
+  deleted: boolean;
   createdAt: string;
 }
 
@@ -143,6 +145,8 @@ export interface CreateEmployeeRequest {
   phone?: string;
   /** Bo trong -> BE tu sinh mat khau ngau nhien (auto). */
   password?: string;
+  /** Mac dinh EMPLOYEE. MANAGER chi admin moi duoc tao. */
+  role?: 'EMPLOYEE' | 'MANAGER';
 }
 
 export interface CreateEmployeeResponse extends Employee {

@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
-import { useRequireRole } from '@/lib/require-role';
-import { useAuth } from '@/lib/auth-context';
+import { useRequireRole, ALL_ROLES } from '@/lib/require-role';
+import { useAuth, isStaffRole } from '@/lib/auth-context';
 import { vietQrImageUrl, bankInfo, payosQrImageUrl } from '@/lib/bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
@@ -28,7 +28,7 @@ const NEXT_STATUS: Record<string, { status: 'SHIPPING' | 'COMPLETED'; label: str
 };
 
 export default function OrderDetailPage() {
-  const { ready } = useRequireRole(['CUSTOMER', 'EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(ALL_ROLES);
   const { user } = useAuth();
   const { code } = useParams<{ code: string }>();
   const [order, setOrder] = useState<Order | null>(null);
@@ -37,7 +37,7 @@ export default function OrderDetailPage() {
   const [showCancelForm, setShowCancelForm] = useState(false);
   const [reason, setReason] = useState('');
   const [advancing, setAdvancing] = useState(false);
-  const isStaff = user?.role === 'EMPLOYEE' || user?.role === 'MANAGER';
+  const isStaff = isStaffRole(user?.role);
 
   useEffect(() => {
     if (!ready) return;

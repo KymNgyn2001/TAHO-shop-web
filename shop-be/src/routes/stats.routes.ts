@@ -3,6 +3,7 @@ import { OrderStatus } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { requireRole } from '../middleware/auth';
+import { MANAGER_ROLES } from '../lib/roles';
 import { computeMonthlyStats } from '../lib/monthlyStats';
 
 const ORDER_STATUSES = new Set(Object.values(OrderStatus));
@@ -11,7 +12,7 @@ export const statsRouter = Router();
 
 statsRouter.get(
   '/admin/stats/monthly',
-  requireRole('MANAGER'),
+  requireRole(...MANAGER_ROLES),
   asyncHandler(async (req, res) => {
     const month = String(req.query.month ?? '');
     res.json(await computeMonthlyStats(month));
@@ -20,7 +21,7 @@ statsRouter.get(
 
 statsRouter.get(
   '/admin/transactions',
-  requireRole('MANAGER'),
+  requireRole(...MANAGER_ROLES),
   asyncHandler(async (req, res) => {
     const page = Math.max(0, Number(req.query.page ?? 0));
     const size = Math.min(100, Math.max(1, Number(req.query.size ?? 20)));

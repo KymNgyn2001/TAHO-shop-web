@@ -8,16 +8,13 @@ import { toProductCard, toProductDetail } from '../lib/mappers';
 import { toRelativePath } from '../lib/url';
 import { uniqueSlug } from '../lib/slug';
 import { requireRole } from '../middleware/auth';
+import { STAFF_ROLES, isStaff } from '../lib/roles';
 
 const AUDIENCES = new Set(Object.values(Audience));
 
 export const productsRouter = Router();
 
 const productInclude = { images: true, category: true } as const;
-
-function isStaff(role: string | undefined): boolean {
-  return role === 'EMPLOYEE' || role === 'MANAGER';
-}
 
 productsRouter.get(
   '/products',
@@ -33,6 +30,7 @@ productsRouter.get(
     const includeInactive = req.query.includeInactive === 'true' && isStaff(req.userRole);
 
     const where = {
+      deletedAt: null,
       ...(categoryId ? { categoryId } : {}),
       ...(audience ? { audience } : {}),
       ...(includeInactive ? {} : { active: true }),
@@ -65,7 +63,7 @@ productsRouter.get(
       where: { slug: req.params.slug },
       include: { ...productInclude, variants: true },
     });
-    if (!product) throw Errors.notFound('San pham khong con nua.');
+    if (!product || product.deletedAt) throw Errors.notFound('San pham khong con nua.');
     if (!product.active && !isStaff(req.userRole)) throw Errors.notFound('San pham khong con nua.');
 
     await prisma.product.update({ where: { id: product.id }, data: { viewCount: { increment: 1 } } });
@@ -129,7 +127,7 @@ const createProductSchema = z.object({
 
 productsRouter.post(
   '/admin/products',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const body = createProductSchema.parse(req.body);
     const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
@@ -179,11 +177,11 @@ productsRouter.post(
 
 productsRouter.patch(
   '/admin/products/:id',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const existing = await prisma.product.findUnique({ where: { id } });
-    if (!existing) throw Errors.notFound('Khong tim thay san pham.');
+    if (!existing || existing.deletedAt) throw Errors.notFound('Khong tim thay san pham.');
 
     const body = createProductSchema.parse(req.body);
     const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
@@ -272,12 +270,12 @@ const toggleActiveSchema = z.object({ active: z.boolean() });
 
 productsRouter.patch(
   '/admin/products/:id/active',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const body = toggleActiveSchema.parse(req.body);
     const existing = await prisma.product.findUnique({ where: { id } });
-    if (!existing) throw Errors.notFound('Khong tim thay san pham.');
+    if (!existing || existing.deletedAt) throw Errors.notFound('Khong tim thay san pham.');
 
     const updated = await prisma.product.update({
       where: { id },
@@ -290,25 +288,14 @@ productsRouter.patch(
 
 productsRouter.delete(
   '/admin/products/:id',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
+    // Xoa mem: khong bao gio xoa cung hang khoi DB — giu nguyen don hang/thong ke cu,
+    // chi danh dau deletedAt (va tat ban) de bien mat khoi moi danh sach cong khai lan quan tri.
     const id = Number(req.params.id);
-    try {
-      await prisma.product.delete({ where: { id } });
-    } catch (e) {
-      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
-        throw Errors.notFound('Khong tim thay san pham.');
-      }
-      const message = e instanceof Error ? e.message : '';
-      const isForeignKeyViolation =
-        (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2003') ||
-        message.includes('foreign key constraint') ||
-        message.includes('OrderItem_productId_fkey');
-      if (isForeignKeyViolation) {
-        throw Errors.conflict('PRODUCT_HAS_ORDERS', 'San pham nay da co trong don hang, khong the xoa.');
-      }
-      throw e;
-    }
+    const existing = await prisma.product.findUnique({ where: { id } });
+    if (!existing || existing.deletedAt) throw Errors.notFound('Khong tim thay san pham.');
+    await prisma.product.update({ where: { id }, data: { deletedAt: new Date(), active: false } });
     res.status(204).send();
   }),
 );

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api-client';
 import type { Order } from '@/lib/api-contract';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, ALL_ROLES } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -18,7 +18,7 @@ const STATUS_VI: Record<string, string> = {
 };
 
 export default function OrdersPage() {
-  const { ready } = useRequireRole(['CUSTOMER', 'EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(ALL_ROLES);
   const [orders, setOrders] = useState<Order[] | null>(null);
 
   useEffect(() => {

@@ -7,12 +7,12 @@ import { adminApi } from '@/lib/admin-api';
 import { ApiException } from '@/lib/api-client';
 import type { CategoryWithCount } from '@/lib/api-contract-admin';
 import type { CategoryGroup } from '@/lib/api-contract';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 
 const CATEGORY_GROUPS: CategoryGroup[] = ['Áo', 'Quần', 'Váy & Đầm', 'Phụ kiện'];
 
 export default function AdminCategoriesPage() {
-  const { ready } = useRequireRole(['EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(STAFF_ROLES);
   const [categories, setCategories] = useState<CategoryWithCount[]>([]);
   const [name, setName] = useState('');
   const [group, setGroup] = useState<CategoryGroup | ''>('');

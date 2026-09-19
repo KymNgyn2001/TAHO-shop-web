@@ -113,7 +113,7 @@ const mockTransactions: Transaction[] = Array.from({ length: 8 }, (_, i) => ({
 }));
 
 let mockEmployees: Employee[] = [
-  { id: 2, name: 'Nhân Viên Ban Hàng', email: 'employee@shop.test', phone: null, role: 'EMPLOYEE', active: true, createdAt: new Date().toISOString() },
+  { id: 2, name: 'Nhân Viên Ban Hàng', email: 'employee@shop.test', phone: null, role: 'EMPLOYEE', active: true, deleted: false, createdAt: new Date().toISOString() },
 ];
 
 const mockReviewsAdmin: ReviewForAdmin[] = [
@@ -309,10 +309,10 @@ export const adminApi = {
 
   // ---------- Nhan vien (MANAGER) ----------
 
-  async listEmployees(): Promise<Employee[]> {
-    if (!USE_MOCK) return request('/api/manager/employees');
+  async listEmployees(deleted = false): Promise<Employee[]> {
+    if (!USE_MOCK) return request(`/api/manager/employees${deleted ? '?deleted=true' : ''}`);
     await delay();
-    return structuredClone(mockEmployees);
+    return structuredClone(mockEmployees.filter((e) => e.deleted === deleted));
   },
 
   async createEmployee(body: CreateEmployeeRequest): Promise<CreateEmployeeResponse> {
@@ -324,7 +324,7 @@ export const adminApi = {
     const employee: Employee = {
       id: Math.max(0, ...mockEmployees.map((e) => e.id)) + 1,
       name: body.name, email: body.email, phone: body.phone ?? null,
-      role: 'EMPLOYEE', active: true, createdAt: new Date().toISOString(),
+      role: body.role ?? 'EMPLOYEE', active: true, deleted: false, createdAt: new Date().toISOString(),
     };
     mockEmployees = [...mockEmployees, employee];
     return { ...employee, temporaryPassword: body.password ? null : Math.random().toString(36).slice(2, 10) };
@@ -334,6 +334,14 @@ export const adminApi = {
     if (!USE_MOCK) return request(`/api/manager/employees/${id}`, { method: 'PATCH', body: JSON.stringify({ active }) });
     await delay();
     mockEmployees = mockEmployees.map((e) => (e.id === id ? { ...e, active } : e));
+    return mockEmployees.find((e) => e.id === id)!;
+  },
+
+  /** Xoa mem (deleted=true) hoac khoi phuc (false) — khong bao gio xoa cung. */
+  async setEmployeeDeleted(id: number, deleted: boolean): Promise<Employee> {
+    if (!USE_MOCK) return request(`/api/manager/employees/${id}`, { method: 'PATCH', body: JSON.stringify({ deleted }) });
+    await delay();
+    mockEmployees = mockEmployees.map((e) => (e.id === id ? { ...e, deleted, active: !deleted } : e));
     return mockEmployees.find((e) => e.id === id)!;
   },
 };

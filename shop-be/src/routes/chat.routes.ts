@@ -10,6 +10,7 @@ import { ApiError } from '../lib/apiError';
 import { parseHeightCm, parseWeightKg, recommendSize, nearestAvailableSize } from '../lib/sizeAdvice';
 import { computeMonthlyStats } from '../lib/monthlyStats';
 import { createProductFromDraft } from '../lib/products';
+import { isStaff, isManagerRole } from '../lib/roles';
 
 export const chatRouter = Router();
 
@@ -65,10 +66,6 @@ function stripBuyNoise(flat: string): string {
   s = s.replace(/\d+\s*(cai|chiec|c)\b/gi, ' ');
   s = s.replace(/\bmau\b/gi, ' ');
   return s;
-}
-
-function isStaff(role: string | undefined): boolean {
-  return role === 'EMPLOYEE' || role === 'MANAGER';
 }
 
 /** "250000" hoac "250k" -> 250000. */
@@ -234,7 +231,7 @@ chatRouter.post(
 
         if (pending.kind === 'DELETE_PRODUCT' && isStaff(req.userRole)) {
           try {
-            await prisma.product.delete({ where: { id: pending.productId } });
+            await prisma.product.update({ where: { id: pending.productId }, data: { deletedAt: new Date(), active: false } });
             return res.json({
               role: 'assistant',
               content: `Mình đã xoá sản phẩm "${pending.productName}" khỏi hệ thống.`,
@@ -558,7 +555,7 @@ chatRouter.post(
     }
 
     // ---------- 3. Bao cao thang (chi MANAGER) ----------
-    if (req.userRole === 'MANAGER' && hasAnyFlat(flat, REPORT_TRIGGER)) {
+    if (isManagerRole(req.userRole) && hasAnyFlat(flat, REPORT_TRIGGER)) {
       const now = new Date();
       const isPrevMonth = hasAnyFlat(flat, ['thang truoc']);
       const target = new Date(now.getFullYear(), now.getMonth() - (isPrevMonth ? 1 : 0), 1);
@@ -590,7 +587,7 @@ chatRouter.post(
     if (isStaff(req.userRole) && hasAnyFlat(flat, DELETE_TRIGGER)) {
       // Bo cum lenh ("xoa san pham"/"xoa") truoc khi so khop ten, khong thi diem bi loang.
       const nameOnly = DELETE_TRIGGER.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), lower);
-      const products = await prisma.product.findMany({ include: productInclude });
+      const products = await prisma.product.findMany({ where: { deletedAt: null }, include: productInclude });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
         .filter((r) => r.score >= DELETE_MATCH_SCORE)
@@ -615,7 +612,7 @@ chatRouter.post(
       const target = ranked[0].product;
       return res.json({
         role: 'assistant',
-        content: `Xác nhận xoá sản phẩm "${target.name}" khỏi hệ thống? Không thể hoàn tác.`,
+        content: `Xác nhận xoá sản phẩm "${target.name}" khỏi shop? Sản phẩm sẽ bị gỡ hoàn toàn (dữ liệu vẫn được lưu lại, không xoá cứng).`,
         confirm: true,
         context: { ...context, pendingConfirm: { kind: 'DELETE_PRODUCT', productId: target.id, productName: target.name } },
       });
@@ -626,7 +623,7 @@ chatRouter.post(
       const wantsShow = hasAnyFlat(flat, SHOW_TRIGGER);
       const triggerWords = wantsShow ? SHOW_TRIGGER : HIDE_TRIGGER;
       const nameOnly = triggerWords.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), lower);
-      const products = await prisma.product.findMany({ include: productInclude });
+      const products = await prisma.product.findMany({ where: { deletedAt: null }, include: productInclude });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
         .filter((r) => r.score >= DELETE_MATCH_SCORE)
@@ -674,7 +671,7 @@ chatRouter.post(
         .replace(/\bsize\s*\w+\b/gi, ' ')
         .replace(/(?:thanh|len|la|con lai)\s*\d+\b/gi, ' ')
         .replace(/\bmau\b/gi, ' ');
-      const products = await prisma.product.findMany({ include: { ...productInclude, variants: true } });
+      const products = await prisma.product.findMany({ where: { deletedAt: null }, include: { ...productInclude, variants: true } });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
         .filter((r) => r.score >= DELETE_MATCH_SCORE)
@@ -757,7 +754,7 @@ chatRouter.post(
       // luon ten san pham lan y dinh mua ("lấy 2 cái áo thun màu trắng size M") —
       // thu tim san pham ngay trong cau nay truoc khi hoi lai chung chung.
       if (!productId) {
-        const candidates = await prisma.product.findMany({ include: productInclude });
+        const candidates = await prisma.product.findMany({ where: { active: true }, include: productInclude });
         const searchRanked = candidates
           .map((p) => ({
             product: p,
@@ -965,7 +962,7 @@ chatRouter.post(
     }
 
     // ---------- 9. Tim san pham theo mo ta ----------
-    const products = await prisma.product.findMany({ include: productInclude });
+    const products = await prisma.product.findMany({ where: { active: true }, include: productInclude });
     const ranked = products
       .map((p) => ({
         product: p,

@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ShoppingBag, ChevronDown, Search, User } from 'lucide-react';
-import { useAuth, roleLabel, isStaffRole } from '@/lib/auth-context';
+import { useAuth, roleLabel, isStaffRole, isManagerRole } from '@/lib/auth-context';
 import { useCart } from '@/lib/cart-context';
 import { api, type Category, type CategoryGroup } from '@/lib/api-client';
 
@@ -172,13 +172,13 @@ export default function SiteHeader() {
                     {user.role === 'CUSTOMER' && (
                       <Link href="/orders" onClick={() => setMenuOpen(false)}>Đơn hàng của tôi</Link>
                     )}
-                    {user.role === 'MANAGER' && (
+                    {isManagerRole(user.role) && (
                       <>
                         <Link href="/admin/stats" onClick={() => setMenuOpen(false)}>Thống kê shop</Link>
-                        <Link href="/manager/employees" onClick={() => setMenuOpen(false)}>Nhân viên</Link>
+                        <Link href="/manager/employees" onClick={() => setMenuOpen(false)}>{user.role === 'ADMIN' ? 'Quản lý tài khoản' : 'Nhân viên'}</Link>
                       </>
                     )}
-                    {(user.role === 'EMPLOYEE' || user.role === 'MANAGER') && (
+                    {isStaffRole(user.role) && (
                       <>
                         <Link href="/admin/orders" onClick={() => setMenuOpen(false)}>Đơn hàng</Link>
                         <Link href="/admin/products" onClick={() => setMenuOpen(false)}>Sản phẩm</Link>
@@ -187,6 +187,7 @@ export default function SiteHeader() {
                         <Link href="/admin/reviews" onClick={() => setMenuOpen(false)}>Đánh giá khách hàng</Link>
                       </>
                     )}
+                    <Link href="/account/password" onClick={() => setMenuOpen(false)}>Đổi mật khẩu</Link>
                     <button type="button" onClick={handleLogout}>Đăng xuất</button>
                   </div>
                 </>

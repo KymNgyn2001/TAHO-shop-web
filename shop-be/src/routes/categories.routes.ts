@@ -5,6 +5,7 @@ import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
 import { uniqueSlug } from '../lib/slug';
 import { requireRole } from '../middleware/auth';
+import { STAFF_ROLES } from '../lib/roles';
 
 export const categoriesRouter = Router();
 
@@ -15,7 +16,7 @@ categoriesRouter.get(
   '/categories',
   asyncHandler(async (_req, res) => {
     const categories = await prisma.category.findMany({
-      include: { _count: { select: { products: true } } },
+      include: { _count: { select: { products: { where: { deletedAt: null } } } } },
       orderBy: { name: 'asc' },
     });
     res.json(
@@ -33,7 +34,7 @@ const createCategorySchema = z.object({
 
 categoriesRouter.post(
   '/admin/categories',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const body = createCategorySchema.parse(req.body);
     const existing = await prisma.category.findFirst({
@@ -56,7 +57,7 @@ const updateCategorySchema = z.object({ group: z.enum(CATEGORY_GROUPS).nullable(
 
 categoriesRouter.patch(
   '/admin/categories/:id',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const body = updateCategorySchema.parse(req.body);
@@ -69,7 +70,7 @@ categoriesRouter.patch(
 
 categoriesRouter.delete(
   '/admin/categories/:id',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const id = Number(req.params.id);
     const count = await prisma.product.count({ where: { categoryId: id } });

@@ -7,7 +7,7 @@ import { Eye, EyeOff, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import { api, ApiException } from '@/lib/api-client';
 import type { ProductCard } from '@/lib/api-contract';
 import { adminApi } from '@/lib/admin-api';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -16,7 +16,7 @@ const AUDIENCE_VI: Record<string, string> = {
 };
 
 export default function AdminProductsPage() {
-  const { ready } = useRequireRole(['EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(STAFF_ROLES);
   const [products, setProducts] = useState<ProductCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -55,7 +55,7 @@ export default function AdminProductsPage() {
   }
 
   async function remove(id: number, name: string) {
-    if (!confirm(`Xoá sản phẩm "${name}"? Không thể hoàn tác.`)) return;
+    if (!confirm(`Xoá sản phẩm "${name}"? Sản phẩm sẽ bị gỡ khỏi shop (chỉ xoá mềm, dữ liệu và đơn hàng cũ vẫn được giữ).`)) return;
     setError(null);
     setDeletingId(id);
     try {

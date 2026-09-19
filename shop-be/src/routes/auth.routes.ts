@@ -51,7 +51,7 @@ authRouter.post(
   asyncHandler(async (req, res) => {
     const body = loginSchema.parse(req.body);
     const user = await prisma.user.findUnique({ where: { email: body.email } });
-    if (!user || !user.active || !(await verifyPassword(body.password, user.passwordHash))) {
+    if (!user || !user.active || user.deletedAt || !(await verifyPassword(body.password, user.passwordHash))) {
       throw new ApiError(401, 'INVALID_CREDENTIALS', 'Email hoac mat khau khong dung.');
     }
     const token = signToken({ sub: user.id, role: user.role });
@@ -76,7 +76,7 @@ authRouter.post(
     // nao da dang ky trong he thong.
     const genericMessage = 'Neu email nay ton tai trong he thong, minh da gui link dat lai mat khau roi.';
 
-    if (user && user.active) {
+    if (user && user.active && !user.deletedAt) {
       const rawToken = crypto.randomBytes(32).toString('hex');
       const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
       await prisma.user.update({
@@ -121,6 +121,32 @@ authRouter.post(
   }),
 );
 
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Vui long nhap mat khau hien tai.'),
+  newPassword: z.string().min(6, 'Mat khau moi phai co it nhat 6 ky tu.'),
+});
+
+/** Moi tai khoan (khach, nhan vien, quan ly, admin) tu doi mat khau cua chinh minh. */
+authRouter.post(
+  '/change-password',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const body = changePasswordSchema.parse(req.body);
+    const user = await prisma.user.findUnique({ where: { id: req.userId! } });
+    if (!user) throw Errors.notFound();
+    if (!(await verifyPassword(body.currentPassword, user.passwordHash))) {
+      throw Errors.validation('Mat khau hien tai khong dung.', 'currentPassword');
+    }
+    if (body.currentPassword === body.newPassword) {
+      throw Errors.validation('Mat khau moi phai khac mat khau hien tai.', 'newPassword');
+    }
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { passwordHash: await hashPassword(body.newPassword), resetTokenHash: null, resetTokenExpiresAt: null },
+    });
+    res.json({ message: 'Da doi mat khau.' });
+  }),
+);
 authRouter.get(
   '/me',
   requireAuth,

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { adminApi } from '@/lib/admin-api';
 import { api, ApiException } from '@/lib/api-client';
 import type { Order, OrderStatus } from '@/lib/api-contract';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' ₫';
 
@@ -40,7 +40,7 @@ const STATUS_FILTERS: { value: OrderStatus | ''; label: string }[] = [
 ];
 
 export default function AdminOrdersPage() {
-  const { ready } = useRequireRole(['EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(STAFF_ROLES);
   const [orders, setOrders] = useState<Order[]>([]);
   const [status, setStatus] = useState<OrderStatus | ''>('');
   const [loading, setLoading] = useState(true);

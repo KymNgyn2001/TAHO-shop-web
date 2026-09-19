@@ -10,6 +10,7 @@ generator client {
 }
 
 enum Role {
+  ADMIN
   MANAGER
   EMPLOYEE
   CUSTOMER
@@ -59,6 +60,9 @@ model User {
    * khong co yeu cau nao dang cho. */
   resetTokenHash      String?
   resetTokenExpiresAt DateTime?
+  /** Xoa mem — khong bao gio xoa cung tai khoan. Co gia tri = da xoa (an khoi danh
+   * sach, khong dang nhap duoc), admin/manager khoi phuc lai duoc. */
+  deletedAt           DateTime?
 
   orders        Order[]
   reviews       Review[]
@@ -93,6 +97,9 @@ model Product {
   /** Nhan vien an san pham (VD het hang lau dai) — van con du lieu don cu, chi
    * khong hien trong tim kiem/danh sach cong khai nua. */
   active       Boolean  @default(true)
+  /** Xoa mem — san pham "bi xoa" van con trong DB (giu don hang/thong ke cu) nhung
+   * bien mat khoi moi danh sach, tim kiem, chatbot. */
+  deletedAt    DateTime?
   createdAt    DateTime @default(now())
 
   images       ProductImage[]

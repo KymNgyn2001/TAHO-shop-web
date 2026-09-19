@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { ApiError } from '../lib/apiError';
 import { requireRole } from '../middleware/auth';
+import { STAFF_ROLES } from '../lib/roles';
 import { upload, saveLocalUpload } from '../middleware/upload';
 import { uploadToR2, r2Enabled } from '../lib/r2';
 
@@ -8,7 +9,7 @@ export const uploadsRouter = Router();
 
 uploadsRouter.post(
   '/admin/uploads',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   (req, res, next) => {
     upload.single('file')(req, res, (err: unknown) => {
       if (err) {

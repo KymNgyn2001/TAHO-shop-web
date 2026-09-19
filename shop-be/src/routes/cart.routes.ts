@@ -3,13 +3,14 @@ import { z } from 'zod';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
+import { isStaff } from '../lib/roles';
 import { addItemToCart, loadCartPayload, resolveCart } from '../lib/cart';
 
 export const cartRouter = Router();
 
 /** Tai khoan nhan vien/quan ly khong dung chuc nang mua hang cua khach. */
 function blockStaff(req: Request, _res: Response, next: NextFunction) {
-  if (req.userRole === 'EMPLOYEE' || req.userRole === 'MANAGER') {
+  if (isStaff(req.userRole)) {
     return next(Errors.forbidden('Tai khoan nhan vien khong dung chuc nang them vao gio hang.'));
   }
   next();

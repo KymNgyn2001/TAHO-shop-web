@@ -159,7 +159,7 @@ type ChatMessage = {
   context?: ChatContext;
 };
 
-export type Role = 'MANAGER' | 'EMPLOYEE' | 'CUSTOMER';
+export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'CUSTOMER';
 
 export type AuthUser = {
   id: number;
@@ -491,6 +491,14 @@ export const api = {
     }
     await delay(400);
     return { message: 'Đã đặt lại mật khẩu. Bạn đăng nhập lại với mật khẩu mới nhé.' };
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<{ message: string }> {
+    if (!USE_MOCK) {
+      return request('/api/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) });
+    }
+    await delay(300);
+    return { message: 'Đã đổi mật khẩu.' };
   },
 
   async me(): Promise<AuthUser> {

@@ -22,6 +22,7 @@ async function main() {
 
   // --- Tai khoan demo (doi mat khau ngay sau lan dang nhap dau tien) ---
   const accounts = [
+    { name: 'Quan Tri Vien', email: 'admin@shop.test', password: 'Admin123!', role: 'ADMIN' as const },
     { name: 'Quan Ly Cua Hang', email: 'manager@shop.test', password: 'Manager123!', role: 'MANAGER' as const },
     { name: 'Nhan Vien Ban Hang', email: 'employee@shop.test', password: 'Employee123!', role: 'EMPLOYEE' as const },
     { name: 'Khach Hang Demo', email: 'customer@shop.test', password: 'Customer123!', role: 'CUSTOMER' as const },

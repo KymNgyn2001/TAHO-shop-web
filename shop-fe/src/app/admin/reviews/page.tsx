@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '@/lib/admin-api';
 import { ApiException } from '@/lib/api-client';
 import type { ReviewForAdmin } from '@/lib/api-contract-admin';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 
 function ReviewRow({ review, onReplied }: { review: ReviewForAdmin; onReplied: (r: ReviewForAdmin) => void }) {
   const [content, setContent] = useState('');
@@ -54,7 +54,7 @@ function ReviewRow({ review, onReplied }: { review: ReviewForAdmin; onReplied: (
 }
 
 export default function AdminReviewsPage() {
-  const { ready } = useRequireRole(['EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(STAFF_ROLES);
   const [reviews, setReviews] = useState<ReviewForAdmin[]>([]);
   const [filter, setFilter] = useState<'all' | 'pending' | 'replied'>('pending');
   const [loading, setLoading] = useState(true);

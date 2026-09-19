@@ -21,7 +21,7 @@ export async function computeMonthlyStats(month: string) {
       include: { items: { include: { product: { include: { category: true } } } } },
     }),
     prisma.order.findMany({ where: { createdAt: { gte: prevStart, lt: start } } }),
-    prisma.product.findMany({ orderBy: { viewCount: 'desc' }, take: 5 }),
+    prisma.product.findMany({ where: { deletedAt: null }, orderBy: { viewCount: 'desc' }, take: 5 }),
   ]);
 
   const active = orders.filter((o) => o.status !== 'CANCELLED');

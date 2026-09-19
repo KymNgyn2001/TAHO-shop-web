@@ -260,7 +260,7 @@ export interface Category {
 // Xac thuc (auth) — 3 role: MANAGER, EMPLOYEE, CUSTOMER
 // ---------------------------------------------------------------------
 
-export type Role = 'MANAGER' | 'EMPLOYEE' | 'CUSTOMER';
+export type Role = 'ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'CUSTOMER';
 
 export interface AuthUser {
   id: number;

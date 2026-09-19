@@ -6,14 +6,18 @@ import { Plus } from 'lucide-react';
 import { adminApi } from '@/lib/admin-api';
 import { ApiException } from '@/lib/api-client';
 import type { Employee } from '@/lib/api-contract-admin';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, MANAGER_ROLES } from '@/lib/require-role';
+import { roleLabel } from '@/lib/auth-context';
 
 export default function ManagerEmployeesPage() {
-  const { ready } = useRequireRole(['MANAGER']);
+  const { ready, user } = useRequireRole(MANAGER_ROLES);
+  const isAdmin = user?.role === 'ADMIN';
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [showDeleted, setShowDeleted] = useState(false);
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [role, setRole] = useState<'EMPLOYEE' | 'MANAGER'>('EMPLOYEE');
   const [autoPassword, setAutoPassword] = useState(true);
   const [password, setPassword] = useState('');
   const [creating, setCreating] = useState(false);
@@ -21,8 +25,8 @@ export default function ManagerEmployeesPage() {
   const [newTempPassword, setNewTempPassword] = useState<{ email: string; password: string } | null>(null);
 
   useEffect(() => {
-    if (ready) adminApi.listEmployees().then(setEmployees).catch(() => {});
-  }, [ready]);
+    if (ready) adminApi.listEmployees(showDeleted).then(setEmployees).catch(() => {});
+  }, [ready, showDeleted]);
 
   async function create() {
     if (!name.trim() || !email.trim()) return;
@@ -35,12 +39,13 @@ export default function ManagerEmployeesPage() {
         email: email.trim(),
         phone: phone.trim() || undefined,
         password: autoPassword ? undefined : password,
+        role: isAdmin ? role : undefined,
       });
-      setEmployees((prev) => [emp, ...prev]);
+      if (!showDeleted) setEmployees((prev) => [emp, ...prev]);
       if (emp.temporaryPassword) setNewTempPassword({ email: emp.email, password: emp.temporaryPassword });
       setName(''); setEmail(''); setPhone(''); setPassword('');
     } catch (e) {
-      setError(e instanceof ApiException ? e.message : 'Không tạo được tài khoản nhân viên.');
+      setError(e instanceof ApiException ? e.message : 'Không tạo được tài khoản.');
     } finally {
       setCreating(false);
     }
@@ -56,16 +61,27 @@ export default function ManagerEmployeesPage() {
     }
   }
 
+  async function setDeleted(emp: Employee, deleted: boolean) {
+    if (deleted && !window.confirm(`Xoá tài khoản "${emp.name}"? Tài khoản sẽ bị ẩn và không đăng nhập được (chỉ xoá mềm, có thể khôi phục).`)) return;
+    setError(null);
+    try {
+      await adminApi.setEmployeeDeleted(emp.id, deleted);
+      setEmployees((prev) => prev.filter((e) => e.id !== emp.id));
+    } catch (e) {
+      setError(e instanceof ApiException ? e.message : 'Không cập nhật được.');
+    }
+  }
+
   if (!ready) return null;
 
   return (
     <div className="wrap admin">
-      <h1>Tài khoản nhân viên</h1>
+      <h1>{isAdmin ? 'Quản lý tài khoản' : 'Tài khoản nhân viên'}</h1>
       {error && <p className="error-bar">{error}</p>}
       {newTempPassword && (
         <p className="error-bar" style={{ borderLeftColor: '#2E6B3E' }}>
           Đã tạo tài khoản cho <strong>{newTempPassword.email}</strong> — mật khẩu tạm thời:{' '}
-          <strong>{newTempPassword.password}</strong> (chỉ hiện một lần, hãy gửi cho nhân viên ngay).
+          <strong>{newTempPassword.password}</strong> (chỉ hiện một lần, hãy gửi cho người dùng ngay).
         </p>
       )}
 
@@ -95,6 +111,15 @@ export default function ManagerEmployeesPage() {
             />
           </div>
         </div>
+        {isAdmin && (
+          <div className="field" style={{ maxWidth: 260 }}>
+            <label htmlFor="erole">Vai trò</label>
+            <select id="erole" value={role} onChange={(e) => setRole(e.target.value as 'EMPLOYEE' | 'MANAGER')}>
+              <option value="EMPLOYEE">Nhân viên</option>
+              <option value="MANAGER">Quản lý</option>
+            </select>
+          </div>
+        )}
         <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: 'var(--step--1)', marginBottom: '1rem' }}>
           <input type="checkbox" checked={autoPassword} onChange={(e) => setAutoPassword(e.target.checked)} />
           Tự động sinh mật khẩu
@@ -109,27 +134,56 @@ export default function ManagerEmployeesPage() {
       </section>
 
       <section className="panel">
-        <h2>Danh sách nhân viên ({employees.length})</h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h2 style={{ margin: 0 }}>
+            {showDeleted ? 'Tài khoản đã xoá' : 'Danh sách'} ({employees.length})
+          </h2>
+          <button type="button" className="chip" onClick={() => setShowDeleted((v) => !v)}>
+            {showDeleted ? 'Xem tài khoản đang dùng' : 'Xem tài khoản đã xoá'}
+          </button>
+        </div>
         <div className="table-scroll">
           <table className="table">
-            <thead><tr><th>Tên</th><th>Email</th><th>SĐT</th><th className="center">Trạng thái</th><th /></tr></thead>
+            <thead>
+              <tr>
+                <th>Tên</th><th>Email</th><th>SĐT</th><th>Vai trò</th>
+                <th className="center">Trạng thái</th><th />
+              </tr>
+            </thead>
             <tbody>
               {employees.map((e) => (
                 <tr key={e.id}>
                   <td>{e.name}</td>
                   <td>{e.email}</td>
                   <td>{e.phone ?? '—'}</td>
-                  <td className="center"><span className="pill" data-s={e.active ? 'COMPLETED' : 'CANCELLED'}>{e.active ? 'Đang làm việc' : 'Đã khoá'}</span></td>
+                  <td>{roleLabel(e.role)}</td>
+                  <td className="center">
+                    <span className="pill" data-s={e.active ? 'COMPLETED' : 'CANCELLED'}>
+                      {e.deleted ? 'Đã xoá' : e.active ? 'Đang làm việc' : 'Đã khoá'}
+                    </span>
+                  </td>
                   <td>
-                    <button type="button" className="chip" onClick={() => toggleActive(e)}>
-                      {e.active ? 'Khoá' : 'Mở lại'}
-                    </button>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      {e.deleted ? (
+                        <button type="button" className="chip" onClick={() => setDeleted(e, false)}>Khôi phục</button>
+                      ) : (
+                        <>
+                          <button type="button" className="chip" onClick={() => toggleActive(e)}>
+                            {e.active ? 'Khoá' : 'Mở lại'}
+                          </button>
+                          <button type="button" className="chip" onClick={() => setDeleted(e, true)}>Xoá</button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        {employees.length === 0 && (
+          <div className="empty"><p>{showDeleted ? 'Chưa có tài khoản nào bị xoá.' : 'Chưa có tài khoản nào.'}</p></div>
+        )}
       </section>
     </div>
   );

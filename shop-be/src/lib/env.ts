@@ -47,4 +47,8 @@ export const env = {
   payosClientId: process.env.PAYOS_CLIENT_ID ?? '',
   payosApiKey: process.env.PAYOS_API_KEY ?? '',
   payosChecksumKey: process.env.PAYOS_CHECKSUM_KEY ?? '',
+  // Tai khoan admin dau tien — dat 2 bien nay tren Render, server tu tao (hoac nang
+  // cap tai khoan co san len ADMIN) luc khoi dong. Khong luu mat khau trong code/git.
+  adminEmail: process.env.ADMIN_EMAIL ?? '',
+  adminPassword: process.env.ADMIN_PASSWORD ?? '',
 };

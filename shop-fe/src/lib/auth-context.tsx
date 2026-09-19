@@ -63,6 +63,7 @@ export function useAuth(): AuthState {
 }
 
 export function roleLabel(role: AuthUser['role']): string {
+  if (role === 'ADMIN') return 'Quản trị viên';
   if (role === 'MANAGER') return 'Quản lý';
   if (role === 'EMPLOYEE') return 'Nhân viên';
   return 'Khách hàng';
@@ -70,5 +71,10 @@ export function roleLabel(role: AuthUser['role']): string {
 
 /** Nhan vien/quan ly khong dung chuc nang mua hang/gio hang. */
 export function isStaffRole(role: AuthUser['role'] | undefined): boolean {
-  return role === 'EMPLOYEE' || role === 'MANAGER';
+  return role === 'EMPLOYEE' || role === 'MANAGER' || role === 'ADMIN';
+}
+
+/** Manager va admin — xem thong ke, quan ly tai khoan. */
+export function isManagerRole(role: AuthUser['role'] | undefined): boolean {
+  return role === 'MANAGER' || role === 'ADMIN';
 }

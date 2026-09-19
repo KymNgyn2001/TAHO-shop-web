@@ -19,7 +19,7 @@ import {
 import { adminApi } from "@/lib/admin-api";
 import { ApiException } from "@/lib/api-client";
 import type { MonthlyStats, Transaction } from "@/lib/api-contract-admin";
-import { useRequireRole } from "@/lib/require-role";
+import { useRequireRole, MANAGER_ROLES } from '@/lib/require-role';
 
 const vnd = (n: number) => n.toLocaleString("vi-VN") + " ₫";
 const short = (n: number) =>
@@ -45,7 +45,7 @@ function thisMonth() {
 }
 
 export default function StatsPage() {
-  const { ready } = useRequireRole(["MANAGER"]);
+  const { ready } = useRequireRole(MANAGER_ROLES);
   const [month, setMonth] = useState(thisMonth());
   const [stats, setStats] = useState<MonthlyStats | null>(null);
   const [tx, setTx] = useState<Transaction[]>([]);

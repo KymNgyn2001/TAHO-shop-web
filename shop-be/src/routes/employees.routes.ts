@@ -1,19 +1,30 @@
 import { Router } from 'express';
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 import { prisma } from '../lib/prisma';
 import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
 import { generateTempPassword, hashPassword } from '../lib/auth';
 import { toEmployee } from '../lib/mappers';
 import { requireRole } from '../middleware/auth';
+import { MANAGER_ROLES } from '../lib/roles';
 
 export const employeesRouter = Router();
 
+/** Manager chi quan ly nhan vien; admin quan ly ca nhan vien lan manager. */
+function manageableRoles(actorRole: string | undefined): Role[] {
+  return actorRole === 'ADMIN' ? ['EMPLOYEE', 'MANAGER'] : ['EMPLOYEE'];
+}
+
 employeesRouter.get(
   '/manager/employees',
-  requireRole('MANAGER'),
-  asyncHandler(async (_req, res) => {
-    const employees = await prisma.user.findMany({ where: { role: 'EMPLOYEE' }, orderBy: { createdAt: 'desc' } });
+  requireRole(...MANAGER_ROLES),
+  asyncHandler(async (req, res) => {
+    const showDeleted = req.query.deleted === 'true';
+    const employees = await prisma.user.findMany({
+      where: { role: { in: manageableRoles(req.userRole) }, deletedAt: showDeleted ? { not: null } : null },
+      orderBy: { createdAt: 'desc' },
+    });
     res.json(employees.map(toEmployee));
   }),
 );
@@ -23,13 +34,18 @@ const createEmployeeSchema = z.object({
   email: z.string().email('Email khong hop le.'),
   phone: z.string().optional(),
   password: z.string().min(6).optional(),
+  role: z.enum(['EMPLOYEE', 'MANAGER']).optional(),
 });
 
 employeesRouter.post(
   '/manager/employees',
-  requireRole('MANAGER'),
+  requireRole(...MANAGER_ROLES),
   asyncHandler(async (req, res) => {
     const body = createEmployeeSchema.parse(req.body);
+    const role: Role = body.role ?? 'EMPLOYEE';
+    if (!manageableRoles(req.userRole).includes(role)) {
+      throw Errors.forbidden('Chi admin moi tao duoc tai khoan quan ly.');
+    }
     const existing = await prisma.user.findUnique({ where: { email: body.email } });
     if (existing) throw Errors.conflict('EMAIL_EXISTS', 'Email nay da duoc su dung.');
 
@@ -42,7 +58,7 @@ employeesRouter.post(
         email: body.email,
         phone: body.phone,
         passwordHash: await hashPassword(plainPassword),
-        role: 'EMPLOYEE',
+        role,
       },
     });
 
@@ -50,16 +66,37 @@ employeesRouter.post(
   }),
 );
 
-const patchSchema = z.object({ active: z.boolean() });
+const patchSchema = z
+  .object({
+    /** Khoa / mo khoa tam thoi. */
+    active: z.boolean().optional(),
+    /** true = xoa mem (an khoi danh sach, khong dang nhap duoc), false = khoi phuc. */
+    deleted: z.boolean().optional(),
+  })
+  .refine((v) => v.active !== undefined || v.deleted !== undefined, 'Khong co gi de cap nhat.');
 
 employeesRouter.patch(
   '/manager/employees/:id',
-  requireRole('MANAGER'),
+  requireRole(...MANAGER_ROLES),
   asyncHandler(async (req, res) => {
     const body = patchSchema.parse(req.body);
     const id = Number(req.params.id);
-    const employee = await prisma.user.findFirst({ where: { id, role: 'EMPLOYEE' } });
-    if (!employee) throw Errors.notFound('Khong tim thay nhan vien.');
+    const employee = await prisma.user.findFirst({ where: { id, role: { in: manageableRoles(req.userRole) } } });
+    if (!employee) throw Errors.notFound('Khong tim thay tai khoan.');
+
+    // Xoa mem — khong bao gio xoa cung, giu lai de doi soat va khoi phuc duoc.
+    if (body.deleted === true) {
+      const updated = await prisma.user.update({ where: { id }, data: { deletedAt: new Date(), active: false } });
+      return res.json(toEmployee(updated));
+    }
+    if (body.deleted === false) {
+      const updated = await prisma.user.update({ where: { id }, data: { deletedAt: null, active: true } });
+      return res.json(toEmployee(updated));
+    }
+
+    if (employee.deletedAt) {
+      throw Errors.conflict('ACCOUNT_DELETED', 'Tai khoan da bi xoa, hay khoi phuc truoc.');
+    }
     const updated = await prisma.user.update({ where: { id }, data: { active: body.active } });
     res.json(toEmployee(updated));
   }),

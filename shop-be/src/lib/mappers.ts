@@ -80,6 +80,7 @@ export function toEmployee(u: User) {
     phone: u.phone,
     role: u.role,
     active: u.active,
+    deleted: u.deletedAt !== null,
     createdAt: u.createdAt.toISOString(),
   };
 }

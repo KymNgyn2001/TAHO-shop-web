@@ -5,6 +5,7 @@ import { asyncHandler } from '../lib/asyncHandler';
 import { Errors } from '../lib/apiError';
 import { toReview } from '../lib/mappers';
 import { requireRole } from '../middleware/auth';
+import { STAFF_ROLES } from '../lib/roles';
 
 export const reviewsRouter = Router();
 
@@ -52,7 +53,7 @@ reviewsRouter.post(
 
 reviewsRouter.get(
   '/admin/reviews',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const page = Math.max(0, Number(req.query.page ?? 0));
     const size = Math.min(100, Math.max(1, Number(req.query.size ?? 20)));
@@ -85,7 +86,7 @@ const replySchema = z.object({ content: z.string().min(1, 'Noi dung tra loi khon
 
 reviewsRouter.post(
   '/admin/reviews/:id/reply',
-  requireRole('EMPLOYEE', 'MANAGER'),
+  requireRole(...STAFF_ROLES),
   asyncHandler(async (req, res) => {
     const body = replySchema.parse(req.body);
     const reviewId = Number(req.params.id);

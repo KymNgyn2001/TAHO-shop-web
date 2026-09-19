@@ -6,11 +6,11 @@ import { useParams } from 'next/navigation';
 import { api, ApiException } from '@/lib/api-client';
 import { adminApi } from '@/lib/admin-api';
 import type { ProductDetail } from '@/lib/api-contract';
-import { useRequireRole } from '@/lib/require-role';
+import { useRequireRole, STAFF_ROLES } from '@/lib/require-role';
 import ProductForm from '@/components/admin/ProductForm';
 
 export default function EditProductPage() {
-  const { ready } = useRequireRole(['EMPLOYEE', 'MANAGER']);
+  const { ready } = useRequireRole(STAFF_ROLES);
   const { slug } = useParams<{ slug: string }>();
 
   const [product, setProduct] = useState<ProductDetail | null>(null);
