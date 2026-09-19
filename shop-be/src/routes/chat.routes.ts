@@ -45,6 +45,14 @@ function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** Bo cum lenh ("xoa san pham", "an san pham"...) va tu chung ("san pham", "mau") khoi cau da bo dau,
+ * chi de lai ten san pham de so khop — neu khong cac tu lenh se lam loang diem trung khop. */
+function commandFreeName(flat: string, triggers: string[]): string {
+  const sorted = [...triggers].sort((a, b) => b.length - a.length);
+  const stripped = sorted.reduce((s, w) => s.replace(new RegExp(`(^|\\s)${escapeRegExp(w)}(?=\\s|$)`, 'g'), ' '), flat);
+  return stripped.replace(/\b(san pham|mau)\b/g, ' ');
+}
+
 function findWholeWord(haystackLower: string, token: string): boolean {
   const re = new RegExp(`(^|[^\\p{L}0-9])${escapeRegExp(token.toLowerCase())}([^\\p{L}0-9]|$)`, 'iu');
   return re.test(haystackLower);
@@ -659,7 +667,7 @@ chatRouter.post(
     // ---------- 4. Xoa san pham (chi EMPLOYEE/MANAGER) ----------
     if (isStaff(req.userRole) && hasAnyFlat(flat, DELETE_TRIGGER)) {
       // Bo cum lenh ("xoa san pham"/"xoa") truoc khi so khop ten, khong thi diem bi loang.
-      const nameOnly = DELETE_TRIGGER.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), lower);
+      const nameOnly = commandFreeName(flat, DELETE_TRIGGER);
       const products = await prisma.product.findMany({ where: { deletedAt: null }, include: productInclude });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
@@ -695,7 +703,7 @@ chatRouter.post(
     if (isStaff(req.userRole) && (hasAnyFlat(flat, HIDE_TRIGGER) || hasAnyFlat(flat, SHOW_TRIGGER))) {
       const wantsShow = hasAnyFlat(flat, SHOW_TRIGGER);
       const triggerWords = wantsShow ? SHOW_TRIGGER : HIDE_TRIGGER;
-      const nameOnly = triggerWords.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), lower);
+      const nameOnly = commandFreeName(flat, triggerWords);
       const products = await prisma.product.findMany({ where: { deletedAt: null }, include: productInclude });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
@@ -740,10 +748,9 @@ chatRouter.post(
         });
       }
 
-      const nameOnly = STOCK_TRIGGER.reduce((s, w) => s.replace(new RegExp(escapeRegExp(w), 'gi'), ' '), flat)
+      const nameOnly = commandFreeName(flat, STOCK_TRIGGER)
         .replace(/\bsize\s*\w+\b/gi, ' ')
-        .replace(/(?:thanh|len|la|con lai)\s*\d+\b/gi, ' ')
-        .replace(/\bmau\b/gi, ' ');
+        .replace(/(?:thanh|len|la|con lai)\s*\d+\b/gi, ' ');
       const products = await prisma.product.findMany({ where: { deletedAt: null }, include: { ...productInclude, variants: true } });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
