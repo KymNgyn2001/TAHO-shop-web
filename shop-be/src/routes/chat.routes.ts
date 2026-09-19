@@ -671,13 +671,15 @@ chatRouter.post(
       const products = await prisma.product.findMany({ where: { deletedAt: null }, include: productInclude });
       const ranked = products
         .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
-        .filter((r) => r.score >= DELETE_MATCH_SCORE)
+        // Xoa la thao tac nguy hiem: bat buoc moi tu khach nhac deu nam trong ten san pham,
+        // khong chap nhan khop 1 phan (tranh "ao thun nu" da xoa roi lai khop nham "Ao thun Unisex").
+        .filter((r) => r.score >= 0.99)
         .sort((a, b) => b.score - a.score);
 
       if (ranked.length === 0) {
         return res.json({
           role: 'assistant',
-          content: 'Mình chưa xác định được sản phẩm nào để xoá, bạn nói rõ tên sản phẩm giúp mình nhé.',
+          content: 'Mình không tìm thấy sản phẩm nào khớp hoàn toàn với tên bạn nói (có thể sản phẩm đã được xoá rồi). Bạn nói rõ tên sản phẩm giúp mình nhé.',
           context,
         });
       }
