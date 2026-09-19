@@ -20,6 +20,7 @@ import { statsRouter } from './routes/stats.routes';
 import { employeesRouter } from './routes/employees.routes';
 import { chatRouter } from './routes/chat.routes';
 import { paymentsRouter } from './routes/payments.routes';
+import { diagnosticsRouter } from './routes/diagnostics.routes';
 
 export const app = express();
 
@@ -67,6 +68,7 @@ app.use(
   employeesRouter,
   chatRouter,
   paymentsRouter,
+  diagnosticsRouter,
 );
 
 app.use(notFoundHandler);

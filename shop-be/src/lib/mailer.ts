@@ -4,11 +4,16 @@ import { vietQrImageUrl } from './bankQr';
 
 const vnd = (n: number) => n.toLocaleString('vi-VN') + ' đ';
 
+// App Password Google hien thi kem dau cach ("abcd efgh ijkl mnop") — bo het khoang trang cho chac.
 const transporter =
   env.emailUser && env.emailAppPassword
     ? nodemailer.createTransport({
         service: 'gmail',
-        auth: { user: env.emailUser, pass: env.emailAppPassword },
+        auth: { user: env.emailUser, pass: env.emailAppPassword.replace(/\s+/g, '') },
+        // Neu SMTP bi chan (VD Render goi mien phi chan cong 465/587) thi bao loi nhanh, khong treo 2 phut.
+        connectionTimeout: 10_000,
+        greetingTimeout: 10_000,
+        socketTimeout: 15_000,
       })
     : null;
 
@@ -204,5 +209,25 @@ export async function sendPaymentReceivedEmail(
   } catch (e) {
     // eslint-disable-next-line no-console
     console.error('[mailer] Gui email da nhan thanh toan that bai:', e);
+  }
+}
+
+export function mailStatus(): { configured: boolean; user: string } {
+  return { configured: transporter !== null, user: env.emailUser ? env.emailUser.replace(/^(.).*(@.*)$/, '$1***$2') : '' };
+}
+
+/** Gui thu that va tra ve loi cu the (khac cac ham khac la nuot loi) — de chan doan vi sao khach khong nhan duoc mail. */
+export async function sendTestEmail(to: string): Promise<{ ok: boolean; error?: string }> {
+  if (!transporter) return { ok: false, error: 'Chua cau hinh EMAIL_USER/EMAIL_APP_PASSWORD tren server.' };
+  try {
+    await transporter.sendMail({
+      from: `"TAHO" <${env.emailUser}>`,
+      to,
+      subject: 'Email thử từ TAHO',
+      html: '<p>Nếu bạn nhận được email này thì hệ thống gửi mail của TAHO đang hoạt động.</p>',
+    });
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? `${(e as { code?: string }).code ?? ''} ${e.message}`.trim() : String(e) };
   }
 }
