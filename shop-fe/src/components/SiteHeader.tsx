@@ -174,7 +174,7 @@ export default function SiteHeader() {
                     )}
                     {user.role === 'MANAGER' && (
                       <>
-                        <Link href="/admin/stats" onClick={() => setMenuOpen(false)}>Báo cáo KPI</Link>
+                        <Link href="/admin/stats" onClick={() => setMenuOpen(false)}>Thống kê shop</Link>
                         <Link href="/manager/employees" onClick={() => setMenuOpen(false)}>Nhân viên</Link>
                       </>
                     )}
