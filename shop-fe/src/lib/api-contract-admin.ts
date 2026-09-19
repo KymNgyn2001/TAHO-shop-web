@@ -47,6 +47,8 @@ export interface CreateVariantInput {
   colorHex?: string;
   priceOverride?: number;
   stockQty: number;
+  /** Bo trong -> BE tu sinh. SKU la duy nhat toan shop (toi da 40 ky tu). */
+  sku?: string;
 }
 
 export interface CreateProductImageInput {

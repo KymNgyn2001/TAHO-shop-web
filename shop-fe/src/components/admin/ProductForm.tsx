@@ -21,7 +21,14 @@ const newColor = (): ColorGroup => ({
   images: [],
 });
 
+type Cell = { priceOverride: string; stockQty: string; sku: string };
+const emptyCell = (): Cell => ({ priceOverride: '', stockQty: '0', sku: '' });
+
 const cellKey = (color: string, size: string) => `${color}::${size}`;
+
+/** "Áo Đen" -> "AO-DEN": dung ghep SKU tu tien to chung + mau + size. */
+const skuPart = (s: string) =>
+  s.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/gi, 'd').toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const PRESET_SIZES = ['S', 'M', 'L', 'XL', '2XL', '3XL'];
 
@@ -52,12 +59,13 @@ function buildInitialState(initial: ProductDetail) {
     if (!sizeOrder.includes(v.size)) sizeOrder.push(v.size);
   }
 
-  const cells: Record<string, { priceOverride: string; stockQty: string }> = {};
+  const cells: Record<string, Cell> = {};
   for (const v of initial.variants) {
     const isOverride = v.price !== initial.basePrice;
     cells[cellKey(v.color, v.size)] = {
       priceOverride: isOverride ? String(v.price) : '',
       stockQty: String(v.stockQty),
+      sku: v.sku,
     };
   }
 
@@ -109,8 +117,10 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
   const [sizes, setSizes] = useState<string[]>(seed?.sizes ?? []);
 
   // --- ma tran gia / ton kho theo (mau, size) ---
-  const [cells, setCells] = useState<Record<string, { priceOverride: string; stockQty: string }>>(seed?.cells ?? {});
+  const [cells, setCells] = useState<Record<string, Cell>>(seed?.cells ?? {});
+  const [bulkPrice, setBulkPrice] = useState('');
   const [bulkStock, setBulkStock] = useState('');
+  const [bulkSku, setBulkSku] = useState('');
 
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -239,19 +249,32 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
 
   // ---------------- ap dung ton kho hang loat ----------------
 
-  function applyBulkStock() {
-    if (bulkStock.trim() === '') return;
+  const canApplyBulk = bulkPrice.trim() !== '' || bulkStock.trim() !== '' || bulkSku.trim() !== '';
+
+  /** Chi ghi de o nao nhan vien da nhap o thanh tren; o de trong thi giu nguyen gia tri hien co.
+   * SKU nhap o day la TIEN TO — moi phan loai duoc ghep them mau + size de khong trung nhau. */
+  function applyBulk() {
+    if (!canApplyBulk) return;
+    const prefix = skuPart(bulkSku);
     setCells((prev) => {
       const next = { ...prev };
       for (const c of validColors) {
         for (const s of validSizes) {
           const key = cellKey(c.name, s);
-          next[key] = { priceOverride: next[key]?.priceOverride ?? '', stockQty: bulkStock };
+          const cur = next[key] ?? emptyCell();
+          next[key] = {
+            priceOverride: bulkPrice.trim() !== '' ? bulkPrice.trim() : cur.priceOverride,
+            stockQty: bulkStock.trim() !== '' ? bulkStock.trim() : cur.stockQty,
+            sku: prefix ? [prefix, skuPart(c.name), skuPart(s)].filter(Boolean).join('-') : cur.sku,
+          };
         }
       }
       return next;
     });
   }
+
+  const setCell = (key: string, patch: Partial<Cell>) =>
+    setCells((prev) => ({ ...prev, [key]: { ...(prev[key] ?? emptyCell()), ...patch } }));
 
   // ---------------- luu ----------------
 
@@ -282,12 +305,13 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       ];
       const variants = validColors.flatMap((c) =>
         validSizes.map((s) => {
-          const cell = cells[cellKey(c.name, s)] ?? { priceOverride: '', stockQty: '0' };
+          const cell = cells[cellKey(c.name, s)] ?? emptyCell();
           return {
             size: s,
             color: c.name,
             priceOverride: cell.priceOverride ? Number(cell.priceOverride) : undefined,
             stockQty: Number(cell.stockQty || 0),
+            sku: cell.sku.trim() || undefined,
           };
         }),
       );
@@ -593,50 +617,113 @@ export default function ProductForm({ mode, productId, initial, initialCategoryI
       {/* ---------- Ma tran gia / ton kho ---------- */}
       {validColors.length > 0 && validSizes.length > 0 && (
         <section className="panel">
-          <h2>Số lượng &amp; giá riêng theo màu / size</h2>
-          <div className="field-row" style={{ alignItems: 'end', marginBottom: '0.85rem' }}>
-            <div className="field" style={{ margin: 0 }}>
-              <label htmlFor="bulkStock">Áp dụng tồn kho cho tất cả</label>
-              <input
-                id="bulkStock" type="number" min={0} placeholder="VD: 20"
-                value={bulkStock} onChange={(e) => setBulkStock(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && applyBulkStock()}
-                style={{ width: 100 }}
-              />
+          <h2>Danh sách phân loại hàng</h2>
+          <div className="variant-bulk">
+            <div className="variant-bulk__fields">
+              <label className="vt-input">
+                <span className="vt-input__prefix">đ</span>
+                <input
+                  type="number" inputMode="numeric" min={0} placeholder="Giá"
+                  aria-label="Giá áp dụng cho tất cả"
+                  value={bulkPrice} onChange={(e) => setBulkPrice(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && applyBulk()}
+                />
+              </label>
+              <label className="vt-input">
+                <input
+                  type="number" inputMode="numeric" min={0} placeholder="Kho hàng"
+                  aria-label="Kho hàng áp dụng cho tất cả"
+                  value={bulkStock} onChange={(e) => setBulkStock(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && applyBulk()}
+                />
+              </label>
+              <label className="vt-input">
+                <input
+                  placeholder="SKU phân loại" maxLength={30}
+                  aria-label="SKU (tiền tố) áp dụng cho tất cả"
+                  value={bulkSku} onChange={(e) => setBulkSku(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && applyBulk()}
+                />
+              </label>
             </div>
-            <button type="button" className="chip" style={{ height: 40 }} onClick={applyBulkStock} disabled={bulkStock.trim() === ''}>
-              Áp dụng tất cả
+            <button type="button" className="btn-dark" onClick={applyBulk} disabled={!canApplyBulk}>
+              Áp dụng cho tất cả phân loại
             </button>
           </div>
+          <p className="variant-hint">
+            Nhập giá / kho hàng / SKU ở hàng trên rồi bấm nút đen để điền xuống toàn bộ bảng (ô nào để trống thì giữ nguyên).
+            SKU nhập ở đây là tiền tố, hệ thống ghép thêm màu và size cho mỗi phân loại (VD: TAHO → TAHO-DEN-M).
+            Giá để trống = dùng giá gốc. Bấm vào ảnh ở cột Màu sắc để thêm ảnh riêng cho màu đó — khách chọn màu trên trang sản phẩm sẽ thấy đúng ảnh này.
+          </p>
           <div className="table-scroll">
-            <table className="table">
+            <table className="table variant-table">
               <thead>
-                <tr><th>Màu</th><th>Size</th><th>Giá riêng (để trống = giá gốc)</th><th>Tồn kho</th></tr>
+                <tr>
+                  <th className="center">Màu sắc</th>
+                  <th className="center">Size</th>
+                  <th>Giá</th>
+                  <th>Kho hàng</th>
+                  <th>SKU phân loại</th>
+                </tr>
               </thead>
               <tbody>
                 {validColors.flatMap((c) =>
-                  validSizes.map((s) => {
+                  validSizes.map((s, si) => {
                     const key = cellKey(c.name, s);
-                    const cell = cells[key] ?? { priceOverride: '', stockQty: '0' };
+                    const cell = cells[key] ?? emptyCell();
                     return (
-                      <tr key={key}>
-                        <td>{c.name}</td>
-                        <td>{s}</td>
+                      <tr key={key} className={si === 0 ? 'variant-table__first' : undefined}>
+                        {si === 0 && (
+                          <td className="variant-table__color" rowSpan={validSizes.length}>
+                            <strong>{c.name}</strong>
+                            <button
+                              type="button"
+                              className={`variant-table__img${c.images.length === 0 ? ' variant-table__img--empty' : ''}`}
+                              onClick={() => pickColorImages(c.id)}
+                              disabled={uploadingColorId === c.id}
+                              aria-label={`Thêm ảnh cho màu ${c.name}`}
+                              title="Bấm để thêm ảnh cho màu này"
+                            >
+                              {uploadingColorId === c.id
+                                ? <span>Đang tải…</span>
+                                : c.images.length > 0
+                                  ? <img src={c.images[0].url} alt={c.name} />
+                                  : <><Plus size={16} /><span>Thêm ảnh</span></>}
+                              {c.images.length > 1 && <em>{c.images.length}</em>}
+                            </button>
+                          </td>
+                        )}
+                        <td className="center">{s}</td>
                         <td>
-                          <input
-                            type="number" min={0} placeholder={basePrice || '0'}
-                            value={cell.priceOverride}
-                            onChange={(e) => setCells((prev) => ({ ...prev, [key]: { ...cell, priceOverride: e.target.value } }))}
-                            style={{ width: 110 }}
-                          />
+                          <label className="vt-input">
+                            <span className="vt-input__prefix">đ</span>
+                            <input
+                              type="number" inputMode="numeric" min={0} placeholder={basePrice || '0'}
+                              aria-label={`Giá ${c.name} ${s}`}
+                              value={cell.priceOverride}
+                              onChange={(e) => setCell(key, { priceOverride: e.target.value })}
+                            />
+                          </label>
                         </td>
                         <td>
-                          <input
-                            type="number" min={0}
-                            value={cell.stockQty}
-                            onChange={(e) => setCells((prev) => ({ ...prev, [key]: { ...cell, stockQty: e.target.value } }))}
-                            style={{ width: 80 }}
-                          />
+                          <label className="vt-input">
+                            <input
+                              type="number" inputMode="numeric" min={0}
+                              aria-label={`Kho hàng ${c.name} ${s}`}
+                              value={cell.stockQty}
+                              onChange={(e) => setCell(key, { stockQty: e.target.value })}
+                            />
+                          </label>
+                        </td>
+                        <td>
+                          <label className="vt-input">
+                            <input
+                              placeholder="Nhập vào" maxLength={40}
+                              aria-label={`SKU ${c.name} ${s}`}
+                              value={cell.sku}
+                              onChange={(e) => setCell(key, { sku: e.target.value })}
+                            />
+                          </label>
                         </td>
                       </tr>
                     );

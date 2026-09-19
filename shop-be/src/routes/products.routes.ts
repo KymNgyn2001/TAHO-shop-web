@@ -109,7 +109,32 @@ const variantInputSchema = z.object({
   colorHex: z.string().optional(),
   priceOverride: z.number().int().positive().optional(),
   stockQty: z.number().int().min(0),
+  /** De trong = he thong tu sinh. SKU la duy nhat toan shop. */
+  sku: z.string().max(40, 'SKU toi da 40 ky tu.').optional(),
 });
+
+const normalizeSku = (raw?: string) => raw?.replace(/\s+/g, '').toUpperCase() || undefined;
+
+/** SKU nhap tay phai khong trung nhau trong cung 1 lan luu va khong trung SKU cua phan loai khac
+ * (san pham khac, hoac phan loai khac cua chinh san pham nay). */
+async function assertSkusAvailable(
+  variants: { size: string; color: string; sku?: string }[],
+  ownProductId?: number,
+) {
+  const wanted = variants.map((v) => ({ ...v, sku: normalizeSku(v.sku) })).filter((v) => v.sku);
+  const seen = new Set<string>();
+  for (const v of wanted) {
+    if (seen.has(v.sku!)) throw Errors.validation(`SKU "${v.sku}" bị nhập trùng ở 2 phân loại, mỗi phân loại cần 1 SKU riêng.`, 'sku');
+    seen.add(v.sku!);
+  }
+  if (wanted.length === 0) return;
+  const taken = await prisma.variant.findMany({ where: { sku: { in: [...seen] } } });
+  for (const v of wanted) {
+    const owner = taken.find((t) => t.sku === v.sku);
+    const isSameVariant = owner && owner.productId === ownProductId && owner.size === v.size && owner.color === v.color;
+    if (owner && !isSameVariant) throw Errors.conflict('SKU_EXISTS', `SKU "${v.sku}" đã được dùng cho phân loại khác, bạn đổi SKU khác giúp mình nhé.`);
+  }
+}
 
 const createProductSchema = z.object({
   name: z.string().min(1, 'Ten san pham khong duoc de trong.'),
@@ -132,6 +157,8 @@ productsRouter.post(
     const body = createProductSchema.parse(req.body);
     const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
     if (!category) throw Errors.validation('Danh muc khong ton tai.', 'categoryId');
+
+    await assertSkusAvailable(body.variants);
 
     const slug = await uniqueSlug(body.name, async (s) => {
       const found = await prisma.product.findUnique({ where: { slug: s } });
@@ -159,7 +186,7 @@ productsRouter.post(
         },
         variants: {
           create: body.variants.map((v, i) => ({
-            sku: `${slug.slice(0, 12).toUpperCase()}-${v.size}-${i}`.replace(/\s+/g, '').slice(0, 40),
+            sku: normalizeSku(v.sku) ?? `${slug.slice(0, 12).toUpperCase()}-${v.size}-${i}`.replace(/\s+/g, '').slice(0, 40),
             size: v.size,
             color: v.color,
             colorHex: v.colorHex,
@@ -186,6 +213,7 @@ productsRouter.patch(
     const body = createProductSchema.parse(req.body);
     const category = await prisma.category.findUnique({ where: { id: body.categoryId } });
     if (!category) throw Errors.validation('Danh muc khong ton tai.', 'categoryId');
+    await assertSkusAvailable(body.variants, id);
 
     await prisma.$transaction(async (tx) => {
       await tx.product.update({
@@ -239,13 +267,18 @@ productsRouter.patch(
         if (match) {
           await tx.variant.update({
             where: { id: match.id },
-            data: { colorHex: v.colorHex, priceOverride: v.priceOverride ?? null, stockQty: v.stockQty },
+            data: {
+              colorHex: v.colorHex,
+              priceOverride: v.priceOverride ?? null,
+              stockQty: v.stockQty,
+              ...(normalizeSku(v.sku) ? { sku: normalizeSku(v.sku) } : {}),
+            },
           });
         } else {
           await tx.variant.create({
             data: {
               productId: id,
-              sku: `${existing.slug.slice(0, 12).toUpperCase()}-${v.size}-${Date.now().toString(36).slice(-5)}`
+              sku: normalizeSku(v.sku) ?? `${existing.slug.slice(0, 12).toUpperCase()}-${v.size}-${Date.now().toString(36).slice(-5)}`
                 .replace(/\s+/g, '').slice(0, 40).toUpperCase(),
               size: v.size,
               color: v.color,
