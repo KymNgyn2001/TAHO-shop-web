@@ -11,6 +11,7 @@ import { parseHeightCm, parseWeightKg, recommendSize, nearestAvailableSize } fro
 import { computeMonthlyStats } from '../lib/monthlyStats';
 import { createProductFromDraft } from '../lib/products';
 import { isStaff, isManagerRole } from '../lib/roles';
+import { uniqueSlug } from '../lib/slug';
 
 export const chatRouter = Router();
 
@@ -52,6 +53,49 @@ function findWholeWord(haystackLower: string, token: string): boolean {
 /** Tu don le dung whole-word (tranh "k" khop vao giua tu khac), cum nhieu tu dung substring. */
 function matchesAnyWord(flat: string, words: string[]): boolean {
   return words.some((w) => (w.includes(' ') ? flat.includes(w) : findWholeWord(flat, w)));
+}
+
+/** "tao moi danh muc Sweater" / "them loai Ao len" -> "Sweater" / "Ao len" (giu nguyen dau & hoa thuong
+ * cua khach). Cat theo tung tu vi stripDiacritics giu nguyen so tu, nen tu thu i cua 2 ban khop nhau. */
+function extractNewCategoryName(message: string, flat: string): string | null {
+  const orig = message.trim().split(/\s+/);
+  const f = flat.trim().split(/\s+/);
+  const verbAt = f.findIndex((w) => ['tao', 'them'].includes(w));
+  if (verbAt === -1) return null;
+  let i = verbAt + 1;
+  while (['moi', 'mot', 'them'].includes(f[i])) i++;
+  if (f[i] === 'danh' && f[i + 1] === 'muc') i += 2;
+  else if (f[i] === 'loai') i += 1;
+  else return null;
+  while (['moi', 'la', 'ten'].includes(f[i])) i++;
+  const name = orig.slice(i).join(' ').replace(/^[:\-"“]+|["”.]+$/g, '').trim();
+  return name && name.length <= 40 ? name : null;
+}
+
+/** Doan nhom menu (Ao/Quan/Vay & Dam/Phu kien) tu ten danh muc; khong doan duoc -> null (hien o "Khac"). */
+function guessCategoryGroup(name: string): 'Áo' | 'Quần' | 'Váy & Đầm' | 'Phụ kiện' | null {
+  const flat = stripDiacritics(name.toLowerCase());
+  if (/\b(quan|jean|short|jogger|kaki)\b/.test(flat)) return 'Quần';
+  if (/\b(vay|dam)\b/.test(flat)) return 'Váy & Đầm';
+  if (/\b(ao|sweater|hoodie|polo|cardigan|len)\b/.test(flat)) return 'Áo';
+  if (/\b(non|mu|tui|that lung|day lung|vo|khan|kinh|phu kien)\b/.test(flat)) return 'Phụ kiện';
+  return null;
+}
+
+/** Tao danh muc moi tu chat; da co ten trung (khong phan biet hoa thuong/dau) thi dung lai cai cu. */
+async function findOrCreateCategory(name: string): Promise<{ category: { id: number; name: string; group: string | null }; created: boolean }> {
+  const all = await prisma.category.findMany();
+  const key = stripDiacritics(name.toLowerCase());
+  const existing = all.find((c) => stripDiacritics(c.name.toLowerCase()) === key);
+  if (existing) return { category: existing, created: false };
+  const slug = await uniqueSlug(name, async (s) => !!(await prisma.category.findUnique({ where: { slug: s } })));
+  const category = await prisma.category.create({ data: { name, slug, group: guessCategoryGroup(name) } });
+  return { category, created: true };
+}
+
+function newCategoryNote(c: { name: string; group: string | null }): string {
+  return `Mình đã tạo danh mục "${c.name}"` +
+    (c.group ? ` (nhóm ${c.group} trên menu)` : ' (chưa xếp nhóm, sẽ nằm ở mục "Khác" — bạn xếp nhóm ở trang Danh mục nhé)');
 }
 
 /**
@@ -335,11 +379,25 @@ chatRouter.post(
 
       if (draft.step === 'CATEGORY') {
         const categories = await prisma.category.findMany();
-        const matched = categories.find((c) => findWholeWord(flat, stripDiacritics(c.name.toLowerCase())));
+        const newName = extractNewCategoryName(message, flat);
+        if (newName) {
+          const { category, created } = await findOrCreateCategory(newName);
+          return res.json({
+            role: 'assistant',
+            content: `${created ? newCategoryNote(category) : `Danh mục "${category.name}" đã có sẵn, mình dùng luôn`}. Giá bán "${draft.name}" là bao nhiêu?`,
+            context: { ...context, pendingProduct: { ...draft, step: 'PRICE', categoryId: category.id, categoryName: category.name } },
+          });
+        }
+        // Tim danh muc dai nhat khop truoc, tranh "Ao" khop nham vao "Ao khoac".
+        const matched = [...categories]
+          .sort((a, b) => b.name.length - a.name.length)
+          .find((c) => findWholeWord(flat, stripDiacritics(c.name.toLowerCase())));
         if (!matched) {
           return res.json({
             role: 'assistant',
-            content: `Mình chưa nhận ra danh mục đó, bạn chọn giúp 1 trong: ${categories.map((c) => c.name).join(', ')}.`,
+            content:
+              `Mình chưa nhận ra danh mục đó, bạn chọn giúp 1 trong: ${categories.map((c) => c.name).join(', ')}. ` +
+              'Hoặc nhắn "tạo mới danh mục <tên>" (VD: tạo mới danh mục Sweater) để mình tạo luôn.',
             context,
           });
         }
@@ -496,6 +554,21 @@ chatRouter.post(
           role: 'assistant',
           content: 'Bạn gửi link ảnh, hoặc nhắn "xong" khi đã đủ ảnh.',
           expectingImage: true,
+          context,
+        });
+      }
+    }
+
+    // ---------- 0.9. Tao danh muc moi qua chat (chi EMPLOYEE/MANAGER) ----------
+    if (isStaff(req.userRole)) {
+      const newName = extractNewCategoryName(message, flat);
+      if (newName) {
+        const { category, created } = await findOrCreateCategory(newName);
+        return res.json({
+          role: 'assistant',
+          content: created
+            ? `${newCategoryNote(category)}. Nhắn "thêm sản phẩm" để đăng sản phẩm vào danh mục này nhé.`
+            : `Danh mục "${category.name}" đã có sẵn rồi.`,
           context,
         });
       }
