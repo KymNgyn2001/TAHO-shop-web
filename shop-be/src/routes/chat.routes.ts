@@ -39,6 +39,15 @@ const STOCK_TRIGGER = ['cap nhat ton kho', 'sua ton kho', 'chinh ton kho', 'them
 const ADD_PRODUCT_TRIGGER = ['them san pham', 'dang san pham', 'tao san pham moi', 'them mau moi'];
 const AUDIENCE_VI: Record<string, string> = { MEN: 'Nam', WOMEN: 'Nữ', KIDS: 'Trẻ em', UNISEX: 'Unisex' };
 
+/** Sua thong tin san pham co san (khac voi cap nhat ton kho o tren) — moi truong 1 bo tu lenh rieng,
+ * ghi theo mau "<tu lenh> <ten san pham> thanh <gia tri moi>" (xem splitOnThanh() ben duoi). */
+const NAME_TRIGGER = ['doi ten san pham', 'sua ten san pham', 'cap nhat ten san pham'];
+const PRICE_TRIGGER = ['doi gia', 'sua gia', 'cap nhat gia'];
+const CATEGORY_TRIGGER = ['doi danh muc', 'sua danh muc', 'cap nhat danh muc', 'chuyen danh muc'];
+const MATERIAL_TRIGGER = ['doi chat lieu', 'sua chat lieu', 'cap nhat chat lieu'];
+const DESCRIPTION_TRIGGER = ['doi mo ta', 'sua mo ta', 'cap nhat mo ta'];
+const PRODUCT_AUDIENCE_TRIGGER = ['doi doi tuong', 'sua doi tuong', 'cap nhat doi tuong'];
+
 function hasAnyFlat(flat: string, words: string[]): boolean {
   return words.some((w) => flat.includes(w));
 }
@@ -129,6 +138,15 @@ function parseAudience(flat: string): 'MEN' | 'WOMEN' | 'KIDS' | 'UNISEX' | null
   return null;
 }
 
+/** Tach cau "sua <truong> <ten san pham> thanh <gia tri moi>" thanh 2 nua truoc/sau tu "thanh"
+ * (chap nhan ca khong dau) — giu nguyen dau/hoa thuong cua ten san pham lan gia tri moi, khac voi
+ * cac ham tren von lam viec tren ban da bo dau. */
+function splitOnThanh(message: string): { before: string; after: string } | null {
+  const m = /\bth[aà]nh\b/i.exec(message);
+  if (!m) return null;
+  return { before: message.slice(0, m.index), after: message.slice(m.index + m[0].length).trim() };
+}
+
 /** Lay so muc tieu trong cau lenh cap nhat ton kho — uu tien so ngay sau
  * "thanh"/"len"/"la"/"con lai", khong thi lay so cuoi cung (tranh nham voi "2xl"/"3xl"). */
 function extractQuantity(flat: string): number | null {
@@ -166,6 +184,43 @@ const pendingConfirmSchema = z.union([
     productName: z.string(),
     size: z.string(),
     color: z.string(),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_PRODUCT_NAME'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    newName: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_PRODUCT_PRICE'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    newPrice: z.number().int().positive(),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_PRODUCT_CATEGORY'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    categoryId: z.number().int().positive(),
+    categoryName: z.string(),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_PRODUCT_MATERIAL'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    newMaterial: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_PRODUCT_DESCRIPTION'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    newDescription: z.string().min(1),
+  }),
+  z.object({
+    kind: z.literal('UPDATE_PRODUCT_AUDIENCE'),
+    productId: z.number().int().positive(),
+    productName: z.string(),
+    audience: z.enum(['MEN', 'WOMEN', 'KIDS', 'UNISEX']),
   }),
   z.object({
     kind: z.literal('CREATE_PRODUCT'),
@@ -242,7 +297,8 @@ chatRouter.post(
             content:
               pending.kind === 'ADD_TO_CART' ? 'Đã huỷ, mình không thêm vào giỏ hàng nhé.'
               : pending.kind === 'CREATE_PRODUCT' ? 'Đã huỷ, mình không đăng sản phẩm này nữa.'
-              : 'Đã huỷ, mình không xoá sản phẩm đó.',
+              : pending.kind === 'DELETE_PRODUCT' ? 'Đã huỷ, mình không xoá sản phẩm đó.'
+              : 'Đã huỷ, mình không thay đổi gì cả.',
             context: restContext,
           });
         }
@@ -312,6 +368,60 @@ chatRouter.post(
           return res.json({
             role: 'assistant',
             content: `Mình đã cập nhật tồn kho "${pending.productName}" — màu ${pending.color}, size ${pending.size} thành ${pending.quantity}.`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_PRODUCT_NAME' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { name: pending.newName } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã đổi tên "${pending.productName}" thành "${pending.newName}".`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_PRODUCT_PRICE' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { basePrice: pending.newPrice } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã đổi giá "${pending.productName}" thành ${pending.newPrice.toLocaleString('vi-VN')}đ.`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_PRODUCT_CATEGORY' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { categoryId: pending.categoryId } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã chuyển "${pending.productName}" sang danh mục "${pending.categoryName}".`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_PRODUCT_MATERIAL' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { material: pending.newMaterial } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã cập nhật chất liệu "${pending.productName}" thành "${pending.newMaterial}".`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_PRODUCT_DESCRIPTION' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { description: pending.newDescription } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã cập nhật mô tả "${pending.productName}".`,
+            context: restContext,
+          });
+        }
+
+        if (pending.kind === 'UPDATE_PRODUCT_AUDIENCE' && isStaff(req.userRole)) {
+          await prisma.product.update({ where: { id: pending.productId }, data: { audience: pending.audience } });
+          return res.json({
+            role: 'assistant',
+            content: `Mình đã đổi đối tượng "${pending.productName}" thành ${AUDIENCE_VI[pending.audience]}.`,
             context: restContext,
           });
         }
@@ -816,6 +926,131 @@ chatRouter.post(
         content: 'Mình sẽ hỏi vài câu để đăng sản phẩm mới nhé. Trước tiên, tên sản phẩm là gì?',
         context: { ...context, pendingProduct: { step: 'NAME' } },
       });
+    }
+
+    // ---------- 4e. Sua thong tin san pham co san: ten/gia/danh muc/chat lieu/mo ta/doi tuong
+    // (chi EMPLOYEE/MANAGER) — khac voi 4c (chi sua ton kho) va 4d (dang san pham MOI). ----------
+    if (isStaff(req.userRole)) {
+      const fieldTriggers: { label: string; words: string[] }[] = [
+        { label: 'ten', words: NAME_TRIGGER },
+        { label: 'gia', words: PRICE_TRIGGER },
+        { label: 'danh_muc', words: CATEGORY_TRIGGER },
+        { label: 'chat_lieu', words: MATERIAL_TRIGGER },
+        { label: 'mo_ta', words: DESCRIPTION_TRIGGER },
+        { label: 'doi_tuong', words: PRODUCT_AUDIENCE_TRIGGER },
+      ];
+      const matched = fieldTriggers.find((f) => hasAnyFlat(flat, f.words));
+
+      if (matched) {
+        const split = splitOnThanh(message);
+        if (!split || !split.after) {
+          return res.json({
+            role: 'assistant',
+            content: 'Bạn nhắn theo mẫu: "đổi giá áo thun TAHO thành 250000" (thay "giá" bằng tên/danh mục/chất liệu/mô tả/đối tượng tuỳ ý) giúp mình nhé.',
+            context,
+          });
+        }
+
+        const nameOnly = commandFreeName(stripDiacritics(split.before.toLowerCase()), matched.words);
+        const products = await prisma.product.findMany({ where: { deletedAt: null }, include: productInclude });
+        const ranked = products
+          .map((p) => ({ product: p, score: scoreText(nameOnly, p.name) }))
+          .filter((r) => r.score >= DELETE_MATCH_SCORE)
+          .sort((a, b) => b.score - a.score);
+
+        if (ranked.length === 0) {
+          return res.json({
+            role: 'assistant',
+            content: 'Mình chưa xác định được sản phẩm nào, bạn nói rõ tên sản phẩm giúp mình nhé.',
+            context,
+          });
+        }
+        if (ranked.length > 1 && ranked[0].score - ranked[1].score < 0.15) {
+          return res.json({
+            role: 'assistant',
+            content: 'Có vài sản phẩm trùng tên, bạn chọn đúng mẫu giúp mình:',
+            products: ranked.slice(0, 3).map((r) => toProductCard(r.product)),
+            context,
+          });
+        }
+
+        const target = ranked[0].product;
+        const rawValue = split.after;
+
+        if (matched.label === 'gia') {
+          const price = parsePriceVnd(rawValue);
+          if (!price) {
+            return res.json({ role: 'assistant', content: 'Bạn cho mình giá cụ thể giúp nhé (VD: 250000 hoặc 250k).', context });
+          }
+          return res.json({
+            role: 'assistant',
+            content: `Xác nhận đổi giá "${target.name}" từ ${target.basePrice.toLocaleString('vi-VN')}đ thành ${price.toLocaleString('vi-VN')}đ?`,
+            confirm: true,
+            context: { ...context, pendingConfirm: { kind: 'UPDATE_PRODUCT_PRICE', productId: target.id, productName: target.name, newPrice: price } },
+          });
+        }
+
+        if (matched.label === 'ten') {
+          return res.json({
+            role: 'assistant',
+            content: `Xác nhận đổi tên "${target.name}" thành "${rawValue}"?`,
+            confirm: true,
+            context: { ...context, pendingConfirm: { kind: 'UPDATE_PRODUCT_NAME', productId: target.id, productName: target.name, newName: rawValue } },
+          });
+        }
+
+        if (matched.label === 'danh_muc') {
+          const categories = await prisma.category.findMany();
+          const flatValue = stripDiacritics(rawValue.toLowerCase());
+          const matchedCat = [...categories]
+            .sort((a, b) => b.name.length - a.name.length)
+            .find((c) => stripDiacritics(c.name.toLowerCase()) === flatValue || findWholeWord(flatValue, stripDiacritics(c.name.toLowerCase())));
+          if (!matchedCat) {
+            return res.json({
+              role: 'assistant',
+              content: `Mình chưa nhận ra danh mục đó, hiện có: ${categories.map((c) => c.name).join(', ')}.`,
+              context,
+            });
+          }
+          return res.json({
+            role: 'assistant',
+            content: `Xác nhận chuyển "${target.name}" từ danh mục "${target.category.name}" sang "${matchedCat.name}"?`,
+            confirm: true,
+            context: { ...context, pendingConfirm: { kind: 'UPDATE_PRODUCT_CATEGORY', productId: target.id, productName: target.name, categoryId: matchedCat.id, categoryName: matchedCat.name } },
+          });
+        }
+
+        if (matched.label === 'chat_lieu') {
+          return res.json({
+            role: 'assistant',
+            content: `Xác nhận đổi chất liệu "${target.name}" thành "${rawValue}"?`,
+            confirm: true,
+            context: { ...context, pendingConfirm: { kind: 'UPDATE_PRODUCT_MATERIAL', productId: target.id, productName: target.name, newMaterial: rawValue } },
+          });
+        }
+
+        if (matched.label === 'mo_ta') {
+          return res.json({
+            role: 'assistant',
+            content: `Xác nhận đổi mô tả "${target.name}" thành: "${rawValue}"?`,
+            confirm: true,
+            context: { ...context, pendingConfirm: { kind: 'UPDATE_PRODUCT_DESCRIPTION', productId: target.id, productName: target.name, newDescription: rawValue } },
+          });
+        }
+
+        if (matched.label === 'doi_tuong') {
+          const audience = parseAudience(stripDiacritics(rawValue.toLowerCase()));
+          if (!audience) {
+            return res.json({ role: 'assistant', content: 'Bạn chọn giúp mình: Nam, Nữ, Trẻ em, hay Unisex?', context });
+          }
+          return res.json({
+            role: 'assistant',
+            content: `Xác nhận đổi đối tượng "${target.name}" thành ${AUDIENCE_VI[audience]}?`,
+            confirm: true,
+            context: { ...context, pendingConfirm: { kind: 'UPDATE_PRODUCT_AUDIENCE', productId: target.id, productName: target.name, audience } },
+          });
+        }
+      }
     }
 
     // ---------- 5. Y dinh mua hang ----------
