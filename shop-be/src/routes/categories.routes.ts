@@ -6,11 +6,11 @@ import { Errors } from '../lib/apiError';
 import { uniqueSlug } from '../lib/slug';
 import { requireRole } from '../middleware/auth';
 import { STAFF_ROLES } from '../lib/roles';
+import { CATEGORY_GROUPS, guessCategoryGroup } from '../lib/categoryGroup';
 
 export const categoriesRouter = Router();
 
-/** Nhom co dinh de menu on dinh — chon 1 trong cac gia tri nay khi tao/sua danh muc. */
-export const CATEGORY_GROUPS = ['Áo', 'Quần', 'Váy & Đầm', 'Phụ kiện'] as const;
+export { CATEGORY_GROUPS };
 
 categoriesRouter.get(
   '/categories',
@@ -46,7 +46,10 @@ categoriesRouter.post(
       const found = await prisma.category.findUnique({ where: { slug: s } });
       return !!found;
     });
-    const category = await prisma.category.create({ data: { name: body.name, slug, group: body.group } });
+    // Khong chon nhom thi tu doan tu ten (VD "Hoodie" -> Ao) — tranh danh muc moi bi troi
+    // o muc "Khac" tren menu chi vi nhan vien quen chon nhom luc tao qua trang them san pham.
+    const group = body.group ?? guessCategoryGroup(body.name) ?? undefined;
+    const category = await prisma.category.create({ data: { name: body.name, slug, group } });
     res.status(201).json({
       id: category.id, name: category.name, slug: category.slug, group: category.group, productCount: 0,
     });

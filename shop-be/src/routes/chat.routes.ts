@@ -12,6 +12,7 @@ import { computeMonthlyStats } from '../lib/monthlyStats';
 import { createProductFromDraft } from '../lib/products';
 import { isStaff, isManagerRole } from '../lib/roles';
 import { uniqueSlug } from '../lib/slug';
+import { guessCategoryGroup } from '../lib/categoryGroup';
 
 export const chatRouter = Router();
 
@@ -79,16 +80,6 @@ function extractNewCategoryName(message: string, flat: string): string | null {
   while (['moi', 'la', 'ten'].includes(f[i])) i++;
   const name = orig.slice(i).join(' ').replace(/^[:\-"“]+|["”.]+$/g, '').trim();
   return name && name.length <= 40 ? name : null;
-}
-
-/** Doan nhom menu (Ao/Quan/Vay & Dam/Phu kien) tu ten danh muc; khong doan duoc -> null (hien o "Khac"). */
-function guessCategoryGroup(name: string): 'Áo' | 'Quần' | 'Váy & Đầm' | 'Phụ kiện' | null {
-  const flat = stripDiacritics(name.toLowerCase());
-  if (/\b(quan|jean|short|jogger|kaki)\b/.test(flat)) return 'Quần';
-  if (/\b(vay|dam)\b/.test(flat)) return 'Váy & Đầm';
-  if (/\b(ao|sweater|hoodie|polo|cardigan|len)\b/.test(flat)) return 'Áo';
-  if (/\b(non|mu|tui|that lung|day lung|vo|khan|kinh|phu kien)\b/.test(flat)) return 'Phụ kiện';
-  return null;
 }
 
 /** Tao danh muc moi tu chat; da co ten trung (khong phan biet hoa thuong/dau) thi dung lai cai cu. */
