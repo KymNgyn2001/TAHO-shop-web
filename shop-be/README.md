@@ -27,7 +27,7 @@ Thông tin kết nối (dùng cho pgAdmin "Register Server" hoặc bất kỳ to
 | Port      | 5432                                           |
 | Database  | shop                                           |
 | Username  | postgres                                       |
-| Password  | xem `DATABASE_URL` trong `shop-be/.env` (không ghi vào repo) |
+| Password  | ShopDb123!                                     |
 
 Muốn service tự bật khi khởi động Windows (không phải gõ `npm run db:up` mỗi lần):
 mở Command Prompt **as Administrator** rồi chạy:
@@ -58,19 +58,15 @@ rồi chạy lại `npm run dev` bên `shop-fe` — không cần sửa dòng UI 
 
 ## Tài khoản demo (tạo bởi `npm run seed`)
 
-| Vai trò   | Email                |
-|-----------|-----------------------|
-| ADMIN     | admin@shop.test       |
-| MANAGER   | manager@shop.test     |
-| EMPLOYEE  | employee@shop.test    |
-| CUSTOMER  | customer@shop.test    |
+| Vai trò   | Email                 | Mật khẩu       |
+|-----------|-----------------------|----------------|
+| ADMIN     | admin@shop.test       | LocalAdmin#2026|
+| MANAGER   | manager@shop.test     | Manager123!    |
+| EMPLOYEE  | employee@shop.test    | Employee123!   |
+| CUSTOMER  | customer@shop.test    | Customer123!   |
 
-**Mật khẩu không ghi trong repo** (repo công khai). Khi chạy `npm run seed`, mỗi tài khoản mới tạo được
-gán 1 mật khẩu ngẫu nhiên và in ra màn hình đúng 1 lần — hãy lưu lại. Muốn dùng 1 mật khẩu chung do bạn chọn,
-đặt biến `SEED_PASSWORD` trước khi seed.
-
-> Các tài khoản demo chỉ để chạy thử. **Không seed lên production** — nếu lỡ tạo, hãy đổi mật khẩu
-> (menu tài khoản → "Đổi mật khẩu") hoặc xoá mềm chúng.
+> Các tài khoản demo trên chỉ để chạy thử. **Không dùng lại mật khẩu này trên production** —
+> đổi mật khẩu (menu tài khoản → "Đổi mật khẩu") hoặc xoá mềm các tài khoản demo sau khi deploy.
 
 ## Tài khoản ADMIN
 
@@ -84,7 +80,7 @@ tài khoản Manager (menu "Quản lý tài khoản"). **Mật khẩu admin khô
   ADMIN_PASSWORD=<mật khẩu admin — đặt mạnh, không dùng chung với nơi khác>
   ```
   Đăng nhập xong nên đổi lại mật khẩu ở menu "Đổi mật khẩu".
-- **Local:** `npm run seed` tạo `admin@shop.test` với mật khẩu ngẫu nhiên in ra màn hình 1 lần (chỉ dùng cho DB local).
+- **Local:** `npm run seed` tạo `admin@shop.test` (mật khẩu ghi trong `prisma/seed.ts`, chỉ dùng cho DB local).
 
 ## Gửi email (xác nhận đơn, thanh toán, quên mật khẩu)
 

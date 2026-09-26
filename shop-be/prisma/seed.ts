@@ -1,6 +1,5 @@
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
-import { randomBytes } from 'crypto';
 
 const prisma = new PrismaClient();
 
@@ -21,33 +20,24 @@ const img = (seed: string) => `https://picsum.photos/seed/${seed}/600/800`;
 async function main() {
   console.log('Seeding...');
 
-  // --- Tai khoan demo ---
-  // Mat khau KHONG ghi trong code (repo cong khai): dat SEED_PASSWORD de dung 1 mat khau chung,
-  // khong dat thi moi tai khoan nhan 1 mat khau ngau nhien duoc in ra man hinh DUNG 1 LAN o day.
+  // --- Tai khoan demo (chi dung cho DB local — doi mat khau ngay neu tung seed len production) ---
   const accounts = [
-    { name: 'Quan Tri Vien', email: 'admin@shop.test', role: 'ADMIN' as const },
-    { name: 'Quan Ly Cua Hang', email: 'manager@shop.test', role: 'MANAGER' as const },
-    { name: 'Nhan Vien Ban Hang', email: 'employee@shop.test', role: 'EMPLOYEE' as const },
-    { name: 'Khach Hang Demo', email: 'customer@shop.test', role: 'CUSTOMER' as const },
+    { name: 'Quan Tri Vien', email: 'admin@shop.test', password: 'LocalAdmin#2026', role: 'ADMIN' as const },
+    { name: 'Quan Ly Cua Hang', email: 'manager@shop.test', password: 'Manager123!', role: 'MANAGER' as const },
+    { name: 'Nhan Vien Ban Hang', email: 'employee@shop.test', password: 'Employee123!', role: 'EMPLOYEE' as const },
+    { name: 'Khach Hang Demo', email: 'customer@shop.test', password: 'Customer123!', role: 'CUSTOMER' as const },
   ];
-  const created: { email: string; password: string }[] = [];
   for (const acc of accounts) {
-    const exists = await prisma.user.findUnique({ where: { email: acc.email } });
-    if (exists) continue;
-    const password = process.env.SEED_PASSWORD || randomBytes(9).toString('base64url');
-    await prisma.user.create({
-      data: {
+    await prisma.user.upsert({
+      where: { email: acc.email },
+      update: {},
+      create: {
         name: acc.name,
         email: acc.email,
-        passwordHash: await bcrypt.hash(password, 10),
+        passwordHash: await bcrypt.hash(acc.password, 10),
         role: acc.role,
       },
     });
-    created.push({ email: acc.email, password });
-  }
-  if (created.length > 0) {
-    console.log('Tai khoan demo vua tao (chi hien 1 lan, hay luu lai):');
-    for (const c of created) console.log(`  ${c.email}  /  ${process.env.SEED_PASSWORD ? '(theo SEED_PASSWORD)' : c.password}`);
   }
 
   // --- Danh muc + san pham (dua tren du lieu mock cua FE) ---
